@@ -25,13 +25,11 @@ library
     hs-source-dirs:   src
     exposed-modules:  Examples.HMScope
                       Free.Scope
-                      Free.NonDet
-                      Free.Abort
-                      Free.Out
                       Free.Error
                       Free.Logic.Exists
                       Free.Logic.Equals
                       Free.Logic.Generalize
+                      Free.Logic.Or
                       Free
                       Data.Regex
                       Data.Term
