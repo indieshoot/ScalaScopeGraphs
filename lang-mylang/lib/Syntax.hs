@@ -4,6 +4,10 @@ data Type
   = NumT
   | FunT Type Type
   deriving Eq
+-- To use inference, replace `Type` with
+-- type Ty = Term Int
+-- (Term imported from Data.Term)
+-- See also `lang-hm/Syntax` for an example.
 
 data Expr
   = Num Int
@@ -15,7 +19,7 @@ data Expr
 
 instance Show Type where
   show NumT = "num"
-  show (FunT ti to) = "(" ++ (show ti) ++ " -> " ++ (show to) ++ ")"
+  show (FunT ti to) = "(" ++ show ti ++ " -> " ++ show to ++ ")"
 
 example :: Expr
 example = App (Abs "x" NumT (Plus (Ident "x") (Ident "x"))) (Num 21)

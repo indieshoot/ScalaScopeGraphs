@@ -7,9 +7,6 @@ import Free
 import Free.Scope hiding (edge, new, sink)
 import qualified Free.Scope as S (edge, new, sink)
 import Free.Error
-import Free.Logic.Exists
-import Free.Logic.Equals
-import Free.Logic.Generalize
 import Syntax
 
 ----------------------------
@@ -24,6 +21,7 @@ data Label
 data Decl
   = Decl String Type   -- Variable declaration
   deriving (Eq)
+
 
 instance Show Decl where
   show (Decl x t) = x ++ " : " ++ show t
@@ -49,6 +47,7 @@ re = Dot (Star $ Atom P) $ Atom D
 pShortest :: PathOrder Label Decl
 pShortest p1 p2 = lenRPath p1 < lenRPath p2
 
+-- Match declaration with particular name
 matchDecl :: String -> Decl -> Bool
 matchDecl x (Decl x' _) = x == x'
 
@@ -56,18 +55,19 @@ matchDecl x (Decl x' _) = x == x'
 -- Type Checker --
 ------------------
 
+-- Function that handles each language construct
 tc :: ( Functor f
       -- List of 'capabilities' of type checker
-      -- No need for inference: D
+      -- No need for inference: Disable parts related to first-order unification and generalization
       -- , Exists Type < f                   -- Introduce new meta-variables
       -- , Equals Type < f                   -- First-order unification
-      -- , Generalize [Int] Type < f      -- HM-style generalization
+      -- , Generalize [Int] Type < f         -- HM-style generalization
       , Error String < f                  -- Emit String errors
       , Scope Sc Label Decl < f           -- Scope graph operations
       )
    => Expr -> Sc -> Free f Type
 
-tc (Num _) sc = return NumT
+tc (Num _) _ = return NumT
 tc (Plus e1 e2) sc = do
   t1 <- tc e1 sc
   t2 <- tc e2 sc
@@ -85,7 +85,7 @@ tc (App e1 e2) sc = do
   t2 <- tc e2 sc
   case t1 of
     (FunT t t') | t == t2 -> return t'
-    (FunT t t')           -> err $ "Expected argument of type '" ++ show t ++ "' got '" ++ show t2 ++ "'"
+    (FunT t _)            -> err $ "Expected argument of type '" ++ show t ++ "' got '" ++ show t2 ++ "'"
     t                     -> err $ "Expected arrow type, got '" ++ show t ++ "'"
 tc (Abs x t e) s = do
   s' <- new
