@@ -89,10 +89,19 @@ data Graph l d
           , clos    :: Sc -> [l] }
 
 instance (Show l, Show d) => Show (Graph l d) where
-  show g =
-    intercalate
-      "\n"
-      [show s ++ ": " ++ show (entries g s) | s <- [0..scopes g]]
+  show g = "Graph {\n  edges:\n" ++ formatEdges ++ "  sinks:\n" ++ formatSinks ++ "}"
+    where
+      edgesOf sc = concatMap (\case (l, Left sc') -> [(sc, l, sc')]; _ -> []) $ entries g sc
+      edges      = concatMap edgesOf [0..scopes g]
+
+      formatEdge (sc, l, sc') = "    " ++ show sc ++ " -" ++ show l ++ "-> " ++ show sc' ++ "\n"
+      formatEdges = concatMap formatEdge edges
+
+      sinksOf sc = concatMap (\case (l, Right d) -> [(sc, l, d)]; _ -> []) $ entries g sc
+      sinks      = concatMap sinksOf [0..scopes g]
+
+      formatSink (sc, l, d) = "    " ++ show sc ++ " |-" ++ show l ++ "-> " ++ show d ++ "\n"
+      formatSinks = concatMap formatSink sinks
 
 emptyGraph :: Graph l d
 emptyGraph = Graph 0 (const []) (const [])

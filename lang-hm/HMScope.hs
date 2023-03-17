@@ -1,4 +1,9 @@
-module Examples.HMScope where
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts #-}
+module HMScope where
 
 --import Debug.Trace
 
@@ -16,44 +21,7 @@ import Free.Scope hiding (edge, new, sink)
 import qualified Free.Scope as S (edge, new, sink)
 
 import qualified Data.Map as Map
--- import Example.Compiler (example)
-
--- Language to type check
-data MLy
-  = Num Int
-  | Plus MLy MLy
-  | Abs String MLy
-  | Ident String
-  | App MLy MLy
-  | Let String MLy MLy
-
--- Types
-type Ty = Term Int
-
-instance Show Ty where
-  show (Const i) = "α" ++ show i
-  show (Var i) = "α" ++ show i
-  show (Term "∀" ts) = "(∀ " ++ intercalate " " (map show (init ts)) ++ ". " ++ show (last ts) ++ ")"
-  show (Term "->" [t1, t2]) = show t1 ++ " -> " ++ show t2
-  show (Term "Num" []) = "Num"
-  show (Term f ts) = "(" ++ f ++ intercalate " " (map show ts) ++ ")"
-
--- Type construction
-numT = Term "Num" []
-funT s t = Term "->" [s, t]
-schemeT xs t | length xs > 0 = Term "∀" (map Const xs ++ [t])
-             | otherwise = t
-
--- Free variables
-fv :: Term Int -> [Int]
-fv (Const _) = []
-fv (Var i) = [i]
-fv (Term f ts) | f /= "∀" = nub $ concat $ map fv ts
-               | otherwise = let bs = concat $ map c2fv (init ts)
-                 in nub (fv (last ts) \\ bs)
-  where
-    c2fv (Const i) = [i]
-    c2fv _ = []
+import Syntax
 
 -- Labels & declarations
 data Label = P | D deriving (Eq, Show)
@@ -105,7 +73,7 @@ tc (Ident x) sc t = do
     then do
       dt <- instantiate @[Int] (projTy (head ds))
       equals t dt
-    else if length ds == 0
+    else if null ds
          then err $ "Query failed: unbound identifier " ++ x
          else err $ "Query yielded ambiguous binders for " ++ x
 tc (App f a) sc t = do
@@ -118,10 +86,10 @@ tc (Let x e body) sc t = do
   st <- inspect s
   ds <- query
           sc
-          ((Star wildcard) `Dot` Atom D)
+          (Star wildcard `Dot` Atom D)
           (\ p1 p2 -> lenRPath p1 < lenRPath p2)
           (\ (_ :: Decl) -> True)
-  st' <- generalize (concat $ map (\ (Decl _ t) -> fv t) ds) st
+  st' <- generalize (concatMap (\ (Decl _ t) -> fv t) ds) st
   sc' <- new
   edge sc' P sc
   sink sc' D (Decl x st')
@@ -136,20 +104,7 @@ runTC e =
         $ flip (handle_ hScope) emptyGraph
         $ flip (handle_ hEquals) Map.empty
         $ flip (handle_ hExists) 0
-        $ handle (hGeneralize
-                    fv
-                    schemeT
-                    (\ t -> do
-                       t <- inspect t
-                       case t of
-                         Term "∀" ts -> let gens = init ts; t' = last ts in do
-                           substs <- mapM
-                                       (\ x -> case x of
-                                           Const i -> do y <- exists; return (i,y)
-                                           _       -> err "Bad quantifier")
-                                       gens
-                           return $ substsIn substs t'
-                         _ -> return t))
+        $ handle (hGeneralize fv schemeT genT)
         (do t <- exists
             tc e 0 t
         :: Free ( Generalize [Int] Ty
@@ -163,20 +118,19 @@ runTC e =
     Left s                                   -> Left s
     Right (Left (UnificationError t1 t2), _) -> Left $ "Unification error: " ++ show t1 ++ " != " ++ show t2
     Right (Right (_, u), _)                  -> Right $ inspectVar u 0
+  where
+    genT t = do
+      t <- inspect t
+      case t of
+        Term "∀" ts -> 
+            let gens = init ts
+                t' = last ts 
+            in do
+              substs <- mapM (\case
+                                Const i -> do y <- exists; return (i,y)
+                                _       -> err "Bad quantifier" 
+                             )
+                        gens
+              return $ substsIn substs t'
+        _ -> return t
 
-
-{-
-
-> runTC (Let "g" (Abs "y" (Let "f" (Abs "x" $ Ident "y") (Let "_" (App (Ident "f") (Num 0)) (Ident "f")))) (Ident "g"))
-Right (Term "\8704" [Const 7,Term "->" [Var 7,Term "\8704" [Const 5,Term "->" [Var 5,Var 7]]]])
-
--}
-
-example :: Either String Ty
-example = runTC (Let "g" 
-                  (Abs "y" 
-                    (Let "f" 
-                      (Abs "x" 
-                        $ Ident "y") 
-                      (Let "_" (App (Ident "f") (Num 0)) (Ident "f")))) 
-                  (Ident "g"))
