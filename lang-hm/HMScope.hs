@@ -117,7 +117,10 @@ runTC e =
   in case x of
     Left s                                   -> Left s
     Right (Left (UnificationError t1 t2), _) -> Left $ "Unification error: " ++ show t1 ++ " != " ++ show t2
-    Right (Right (_, u), _)                  -> Right $ inspectVar u 0
+    Right (Right (_, u), _)                  -> 
+      let t' = inspectVar u 0
+          vs = fv t'
+       in Right $ schemeT vs t'
   where
     genT t = do
       t <- inspect t

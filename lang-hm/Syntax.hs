@@ -41,13 +41,17 @@ fv (Term f ts) | f /= "∀" = nub $ concatMap fv ts
     c2fv (Const i) = [i]
     c2fv _ = []
 
+-- Type context
+data Scheme = Scheme [Int] Ty
 
-example :: MLy
-example = Let "g"
-              (Abs "y"
-                (Let "f"
-                  (Abs "x"
-                  $ Ident "y")
-                  (Let "_" (App (Ident "f") (Num 0)) (Ident "f"))))
-              (Ident "g")
+instance Show Scheme where
+  show (Scheme [] t) = show t
+  show (Scheme vars t) = "(∀ "
+                      ++ unwords (map (\i' -> "α" ++ show i') vars) 
+                      ++ ". " 
+                      ++ show t
+                      ++ ")"
+
+sfv :: Scheme -> [Int]
+sfv (Scheme vars t) = fv t \\ vars
 
