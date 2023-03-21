@@ -97,7 +97,7 @@ tc (Let x e body) sc t = do
 
 
 -- Running the type checker
-runTC :: MLy -> Either String Ty
+runTC :: MLy -> Either String (Graph Label Decl, Ty)
 runTC e =
   let x = un
         $ handle hErr
@@ -117,10 +117,10 @@ runTC e =
   in case x of
     Left s                                   -> Left s
     Right (Left (UnificationError t1 t2), _) -> Left $ "Unification error: " ++ show t1 ++ " != " ++ show t2
-    Right (Right (_, u), _)                  -> 
+    Right (Right (_, u), sg)                  -> 
       let t' = inspectVar u 0
           vs = fv t'
-       in Right $ schemeT vs t'
+       in Right (sg, schemeT vs t')
   where
     genT t = do
       t <- inspect t
