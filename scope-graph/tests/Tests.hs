@@ -4,6 +4,7 @@ import Test.HUnit
 import qualified System.Exit as Exit
 
 import qualified RETest as RE
+import qualified Unification as U
 import qualified GraphConstruction as GC
 import qualified Resolution as R
 
@@ -15,7 +16,8 @@ tests = TestList
     [ "test1" ~: test1
     , RE.tests
     , GC.tests
-    , R.tests ]
+    , R.tests
+    , U.tests ]
 
 main :: IO ()
 main = do

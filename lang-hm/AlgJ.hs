@@ -13,6 +13,7 @@ import Free.Error
 
 import Syntax
 import Data.Foldable
+import System.IO.Unsafe (unsafePerformIO)
 
 type Ctx = [(String, Scheme)]
 
@@ -58,11 +59,11 @@ tc (Abs x e) ctx = do
   return $ funT t t'
 tc (Let x e1 e2) ctx = do
   t <- tc e1 ctx
-  let s = generalize ctx t
+  let s  = generalize ctx t
   tc e2 ((x, s): ctx)
 
 -- Running the type checker
-runTC :: MLy -> Either String Scheme
+runTC :: MLy -> Either String (UMap Int, Scheme)
 runTC e =
   let x = un
         $ handle hErr
@@ -77,4 +78,4 @@ runTC e =
   in case x of
     Left s -> Left s
     Right (Left (UnificationError t1 t2)) -> Left $ "Unification error: " ++ show t1 ++ " != " ++ show t2
-    Right (Right (t, u)) -> Right $ generalize [] t
+    Right (Right (t, u)) -> Right (u, generalize [] $ explicate u t)

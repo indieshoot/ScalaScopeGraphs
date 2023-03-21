@@ -54,11 +54,11 @@ type UMap c = Map.Map Int (Term c)
 -- TODO: no occurs check
 unify :: (Eq c, Show c) => Term c -> Term c -> UMap c -> Either (UErr (Term c)) (UMap c)
 unify (Var i) c u | c /= Var i = if Map.member i u
-                                 then unify (u Map.! i) c (Map.update (const Nothing) i u)
+                                 then unify (u Map.! i) c u
                                  else Right
-                                    $ Map.alter (const $ Just c) i
+                                    $ Map.insert i c
                                     $ Map.map (substIn i c) u
-                  | otherwise = Right $ u
+                  | otherwise = Right u
 unify c (Var i) u = unify (Var i) c u
 unify (Const c1) t2 u | t2 == Const c1 = Right u
                       | otherwise = Left $ UnificationError (Const c1) t2
@@ -96,6 +96,14 @@ inspectVar u i = case Map.lookup i u of
     t
   Nothing -> Var i
 
+-- Instantiate all variables in a Term
+-- TODO: no occurs check
+explicate :: UMap c -> Term c -> Term c
+explicate _ c@(Const _) = c
+explicate u (Var i)     = case inspectVar u i of
+  v@(Var _) -> v
+  t         -> explicate u t
+explicate u (Term x as) = Term x $ map (explicate u) as
 
 hEquals :: ( Eq c
            , Show c
