@@ -1,0 +1,17 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("B")
+        , None()
+        , Some(SuperClass(ClassType([], Id("A"), None())))
+        , None()
+        , []
+        )
+      )
+    )
+  ]
+)

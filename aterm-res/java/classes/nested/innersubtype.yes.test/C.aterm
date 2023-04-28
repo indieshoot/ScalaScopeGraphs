@@ -1,0 +1,31 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          []
+        , Id("C")
+        , None()
+        , Some(SuperClass(ClassType([], Id("A"), None())))
+        , None()
+        , [ CMD2CBD(
+              CD2CMD(
+                NCD2CD(
+                  ClassDeclaration(
+                    []
+                  , Id("D")
+                  , None()
+                  , Some(SuperClass(ClassType([], Id("B"), None())))
+                  , None()
+                  , []
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

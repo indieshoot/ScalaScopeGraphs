@@ -1,0 +1,10 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration([], Id("A"), None(), None(), None(), [])
+      )
+    )
+  ]
+)

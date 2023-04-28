@@ -1,0 +1,74 @@
+CompilationUnit(
+  None()
+, [ SingleTypeImport(
+      TypeName(
+        PackageOrTypeName(PackageOrTypeName(Id("p")), Id("A"))
+      , Id("B")
+      )
+    )
+  ]
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("T")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  [Public()]
+                , URT2UT(
+                    UCT2URT(
+                      ClassOrInterfaceTypeMember(
+                        ClassType(Id("p"), None())
+                      , []
+                      , Id("A")
+                      , None()
+                      )
+                    )
+                  )
+                , [ VariableDeclInit(
+                      VariableDecl(Id("a"))
+                    , E2VI(
+                        UI2E(
+                          NewInstance(
+                            None()
+                          , []
+                          , Id("p")
+                          , [QualifiedId([], Id("A"))]
+                          , None()
+                          , []
+                          )
+                        )
+                      )
+                    )
+                  ]
+                )
+              )
+            )
+          , CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  [Public()]
+                , URT2UT(UCT2URT(ClassType(Id("B"), None())))
+                , [ VariableDeclInit(
+                      VariableDecl(Id("b"))
+                    , E2VI(
+                        QualifiedInstance(
+                          EN2E(ExpressionName(Id("a")))
+                        , NewInstance(None(), [], Id("B"), [], None(), [])
+                        )
+                      )
+                    )
+                  ]
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

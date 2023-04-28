@@ -1,0 +1,26 @@
+CompilationUnit(
+  Some(PackageDeclaration([], [Id("p")]))
+, [TypeImportOnDemand(PackageOrTypeName(PackageOrTypeName(Id("q")), Id("r")))]
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("A")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  [Public()]
+                , URT2UT(UCT2URT(ClassType(Id("C"), None())))
+                , [VDI2VD(VariableDecl(Id("c")))]
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

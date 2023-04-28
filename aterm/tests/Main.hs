@@ -1,11 +1,14 @@
 module Main where
 
-import Tests
 import qualified System.Exit as Exit
 
 import Test.HUnit
 
+import Tests
+import Integration
+
 main :: IO ()
 main = do
-    result <- runTestTT tests
+    itest <- testCases
+    result <- runTestTT $ TestList $ tests ++ itest
     if failures result > 0 then Exit.exitFailure else Exit.exitSuccess

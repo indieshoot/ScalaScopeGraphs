@@ -1,0 +1,32 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          []
+        , Id("A")
+        , None()
+        , None()
+        , Some(SuperInterface([ClassType([], Id("I"), None())]))
+        , [ CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(
+                    UT2R(UPT2UT(NumericType(Int())))
+                  , Id("m")
+                  , NoParams()
+                  , LAD2ADE([])
+                  , None()
+                  )
+                , NoMethodBody()
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

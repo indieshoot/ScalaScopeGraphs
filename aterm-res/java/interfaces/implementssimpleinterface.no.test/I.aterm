@@ -1,0 +1,21 @@
+CompilationUnit(
+  None()
+, []
+, [ ID2TD(
+      NormalInterface(
+        []
+      , Id("I")
+      , None()
+      , None()
+      , [ IMD2IMD(
+            AbstractMethodDec(
+              [Public()]
+            , MethodHeader(Void(), Id("m"), NoParams(), LAD2ADE([]), None())
+            , NoMethodBody()
+            )
+          )
+        ]
+      )
+    )
+  ]
+)

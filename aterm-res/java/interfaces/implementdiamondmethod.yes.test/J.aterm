@@ -1,0 +1,14 @@
+CompilationUnit(
+  None()
+, []
+, [ ID2TD(
+      NormalInterface(
+        [Public()]
+      , Id("J")
+      , None()
+      , Some(ExtendsInterfaces([ClassType([], Id("I"), None())]))
+      , []
+      )
+    )
+  ]
+)

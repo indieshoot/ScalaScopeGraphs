@@ -1,0 +1,75 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          []
+        , Id("B")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(
+                    UT2R(URT2UT(UCT2URT(ClassType(Id("B"), None()))))
+                  , Id("b")
+                  , ParamList(
+                      [ FormalParam(
+                          []
+                        , URT2UT(UCT2URT(ClassType(Id("A"), None())))
+                        , VariableDecl(Id("a"))
+                        )
+                      ]
+                    , FP2LFP(
+                        FormalParam(
+                          []
+                        , URT2UT(UCT2URT(ClassType(Id("B"), None())))
+                        , VariableDecl(Id("b"))
+                        )
+                      )
+                    )
+                  , LAD2ADE([])
+                  , None()
+                  )
+                , B2MB(Block([S2BS(Return(L2E(NL2L(Null()))))]))
+                )
+              )
+            )
+          , CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(
+                    UT2R(URT2UT(UCT2URT(ClassType(Id("A"), None()))))
+                  , Id("a")
+                  , ParamList(
+                      [ FormalParam(
+                          []
+                        , URT2UT(UCT2URT(ClassType(Id("A"), None())))
+                        , VariableDecl(Id("a"))
+                        )
+                      ]
+                    , FP2LFP(
+                        FormalParam(
+                          []
+                        , URT2UT(UCT2URT(ClassType(Id("B"), None())))
+                        , VariableDecl(Id("b"))
+                        )
+                      )
+                    )
+                  , LAD2ADE([])
+                  , None()
+                  )
+                , B2MB(Block([S2BS(Return(L2E(NL2L(Null()))))]))
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

@@ -1,0 +1,43 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("Point")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  [Public()]
+                , UPT2UT(NumericType(Int()))
+                , [VDI2VD(VariableDecl(Id("color")))]
+                )
+              )
+            )
+          , CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(
+                    UT2R(UPT2UT(NumericType(Int())))
+                  , Id("color")
+                  , NoParams()
+                  , LAD2ADE([])
+                  , None()
+                  )
+                , B2MB(
+                    Block([S2BS(Return(EN2E(ExpressionName(Id("color")))))])
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

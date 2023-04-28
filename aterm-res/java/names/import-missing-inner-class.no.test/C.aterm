@@ -1,0 +1,23 @@
+CompilationUnit(
+  None()
+, [ SingleTypeImport(
+      TypeName(
+        PackageOrTypeName(PackageOrTypeName(Id("p")), Id("A"))
+      , Id("B")
+      )
+    )
+  ]
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("C")
+        , None()
+        , None()
+        , None()
+        , []
+        )
+      )
+    )
+  ]
+)

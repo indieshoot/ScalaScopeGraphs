@@ -1,0 +1,65 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          []
+        , Id("A")
+        , None()
+        , None()
+        , Some(SuperInterface([ClassType([], Id("I"), None())]))
+        , [ CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(
+                    Void()
+                  , Id("m")
+                  , SingleParam(
+                      FP2LFP(
+                        FormalParam(
+                          []
+                        , URT2UT(UCT2URT(ClassType(Id("A"), None())))
+                        , VariableDecl(Id("a"))
+                        )
+                      )
+                    )
+                  , LAD2ADE([])
+                  , None()
+                  )
+                , B2MB(Block([]))
+                )
+              )
+            )
+          , CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(
+                    UT2R(URT2UT(UCT2URT(ClassType(Id("B"), None()))))
+                  , Id("n")
+                  , SingleParam(
+                      FP2LFP(
+                        FormalParam(
+                          []
+                        , URT2UT(UCT2URT(ClassType(Id("B"), None())))
+                        , VariableDecl(Id("b"))
+                        )
+                      )
+                    )
+                  , LAD2ADE([])
+                  , None()
+                  )
+                , B2MB(
+                    Block([S2BS(Return(EN2E(ExpressionName(Id("b")))))])
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

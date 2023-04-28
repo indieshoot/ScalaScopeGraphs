@@ -1,0 +1,35 @@
+CompilationUnit(
+  None()
+, []
+, [ ID2TD(
+      NormalInterface(
+        []
+      , Id("I")
+      , None()
+      , None()
+      , [ IMD2IMD(
+            AbstractMethodDec(
+              [Public()]
+            , MethodHeader(
+                Void()
+              , Id("m")
+              , SingleParam(
+                  FP2LFP(
+                    FormalParam(
+                      []
+                    , URT2UT(UCT2URT(ClassType(Id("A"), None())))
+                    , VariableDecl(Id("a"))
+                    )
+                  )
+                )
+              , LAD2ADE([])
+              , None()
+              )
+            , NoMethodBody()
+            )
+          )
+        ]
+      )
+    )
+  ]
+)

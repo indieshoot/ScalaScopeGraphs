@@ -1,0 +1,56 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "A"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ IM2TM(ImportExpr(UnqualifiedId("B"), IWild()))
+            , DF2TM(
+                None()
+              , None()
+              , VD2DF(
+                  ValDef(
+                    "x"
+                  , IF2TY(ST2AT(UnqualifiedId("Int"), None()))
+                  , PathExpr(UnqualifiedId("y"))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  , DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "B"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ IM2TM(ImportExpr(UnqualifiedId("A"), IWild()))
+            , DF2TM(
+                None()
+              , None()
+              , VD2DF(
+                  ValDef(
+                    "y"
+                  , IF2TY(ST2AT(UnqualifiedId("Int"), None()))
+                  , PathExpr(UnqualifiedId("x"))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

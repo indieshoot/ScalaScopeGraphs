@@ -1,0 +1,34 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "O"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , TD2DF(TypeDef("Int", IF2TY(ST2AT(UnqualifiedId("Boolean"), None()))))
+              )
+            , DF2TM(
+                None()
+              , None()
+              , VD2DF(
+                  ValDef(
+                    "x"
+                  , IF2TY(ST2AT(UnqualifiedId("Int"), None()))
+                  , Lit(BoolLit(True()))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

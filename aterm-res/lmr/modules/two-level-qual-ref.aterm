@@ -1,0 +1,14 @@
+Program(
+  None()
+, [ Module(
+      "A"
+    , [Module("B", [Def(DefBind("x", Int("5")))])]
+    )
+  , Def(
+      DefBind(
+        "y"
+      , Var(VarQRef(ModQRef(ModRef("A"), "B"), "x"))
+      )
+    )
+  ]
+)

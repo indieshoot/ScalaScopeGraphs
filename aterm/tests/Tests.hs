@@ -34,11 +34,10 @@ testParseConc :: Test
 testParseConc = TestCase $ assertParseSucceeds (ACons (AFunc "C" []) ANil) "[C()]"
 
 testParseConc2 :: Test
-testParseConc2 = TestCase $ assertParseSucceeds (ACons (AFunc "C" []) (ACons (AFunc "D" [AFunc "C" [], ANil]) ANil)) "[C(), D([C(), []])]"
+testParseConc2 = TestCase $ assertParseSucceeds (ACons (AFunc "C" []) (ACons (AFunc "D" [ACons (AFunc "C" []) (ACons ANil ANil)]) ANil)) "[C(), D([C(), []])]"
 
-tests :: Test
+tests :: [Test]
 tests =
-  TestList
     [ "testParseString" ~: testParseString,
       "testParseNil" ~: testParseNil,
       "testParseFuncNoArgs" ~: testParseFuncNoArgs,

@@ -1,0 +1,44 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "A"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , TD2DF(TypeDef("X", IF2TY(ST2AT(UnqualifiedId("Int"), None()))))
+              )
+            , DF2TM(
+                None()
+              , None()
+              , TD2DF(TypeDef("Y", IF2TY(ST2AT(UnqualifiedId("X"), None()))))
+              )
+            , DF2TM(
+                None()
+              , None()
+              , TD2DF(TypeDef("Z", IF2TY(ST2AT(UnqualifiedId("Y"), None()))))
+              )
+            , DF2TM(
+                None()
+              , None()
+              , VD2DF(
+                  ValDef(
+                    "x"
+                  , IF2TY(ST2AT(UnqualifiedId("Z"), None()))
+                  , Lit(IntLit("42"))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

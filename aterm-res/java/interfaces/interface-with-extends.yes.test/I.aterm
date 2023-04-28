@@ -1,0 +1,52 @@
+CompilationUnit(
+  None()
+, []
+, [ ID2TD(
+      NormalInterface(
+        []
+      , Id("J")
+      , None()
+      , None()
+      , [ IMD2IMD(
+            AbstractMethodDec(
+              [Public()]
+            , MethodHeader(Void(), Id("m"), NoParams(), LAD2ADE([]), None())
+            , NoMethodBody()
+            )
+          )
+        ]
+      )
+    )
+  , ID2TD(
+      NormalInterface(
+        []
+      , Id("K")
+      , None()
+      , None()
+      , [ IMD2IMD(
+            AbstractMethodDec(
+              [Public()]
+            , MethodHeader(Void(), Id("n"), NoParams(), LAD2ADE([]), None())
+            , NoMethodBody()
+            )
+          )
+        ]
+      )
+    )
+  , ID2TD(
+      NormalInterface(
+        []
+      , Id("I")
+      , None()
+      , Some(
+          ExtendsInterfaces(
+            [ ClassType([], Id("J"), None())
+            , ClassType([], Id("K"), None())
+            ]
+          )
+        )
+      , []
+      )
+    )
+  ]
+)

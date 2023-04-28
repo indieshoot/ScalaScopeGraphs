@@ -1,0 +1,37 @@
+CompilationUnit(
+  Some(PackageDeclaration([], [Id("p")]))
+, [ SingleTypeImport(
+      TypeName(
+        PackageOrTypeName(PackageOrTypeName(Id("jav")), Id("util"))
+      , Id("List")
+      )
+    )
+  ]
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("Test")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              CD2CMD(
+                NCD2CD(
+                  ClassDeclaration(
+                    [Public()]
+                  , Id("List")
+                  , None()
+                  , None()
+                  , None()
+                  , []
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

@@ -1,0 +1,35 @@
+CompilationUnit(
+  Some(PackageDeclaration([], [Id("p")]))
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("A")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  [Public()]
+                , URT2UT(
+                    UCT2URT(
+                      ClassOrInterfaceTypeMember(
+                        ClassType(Id("q"), None())
+                      , []
+                      , Id("B")
+                      , None()
+                      )
+                    )
+                  )
+                , [VDI2VD(VariableDecl(Id("b")))]
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

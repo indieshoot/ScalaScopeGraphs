@@ -1,0 +1,26 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("Point")
+        , None()
+        , Some(SuperClass(ClassType([], Id("ColoredPoint"), None())))
+        , None()
+        , [ CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  []
+                , UPT2UT(NumericType(Int()))
+                , [VDI2VD(VariableDecl(Id("color")))]
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

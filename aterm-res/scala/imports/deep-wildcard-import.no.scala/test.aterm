@@ -1,0 +1,126 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "O1"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , TD2DF(TypeDef("T", IF2TY(ST2AT(UnqualifiedId("Boolean"), None()))))
+              )
+            , DF2TM(
+                None()
+              , None()
+              , TM2DF(
+                  OD2TM(
+                    ObjectDef(
+                      "O2"
+                    , NoExtends()
+                    , TemplateBody(
+                        None()
+                      , [ DF2TM(
+                            None()
+                          , None()
+                          , TD2DF(TypeDef("T", IF2TY(ST2AT(UnqualifiedId("Int"), None()))))
+                          )
+                        , DF2TM(
+                            None()
+                          , None()
+                          , TM2DF(
+                              OD2TM(
+                                ObjectDef(
+                                  "O3"
+                                , NoExtends()
+                                , TemplateBody(
+                                    None()
+                                  , [ DF2TM(
+                                        None()
+                                      , None()
+                                      , TM2DF(
+                                          OD2TM(
+                                            ObjectDef(
+                                              "O4"
+                                            , NoExtends()
+                                            , TemplateBody(
+                                                None()
+                                              , [ DF2TM(
+                                                    None()
+                                                  , None()
+                                                  , VD2DF(
+                                                      ValDef(
+                                                        "x"
+                                                      , IF2TY(ST2AT(UnqualifiedId("T"), None()))
+                                                      , Lit(IntLit("42"))
+                                                      )
+                                                    )
+                                                  )
+                                                , DF2TM(
+                                                    None()
+                                                  , None()
+                                                  , TM2DF(OD2TM(ObjectDef("O5", NoExtends(), TemplateBody(None(), []))))
+                                                  )
+                                                ]
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                    ]
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        ]
+                      )
+                    )
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  , DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "N"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ IM2TM(
+                ImportExpr(
+                  QualifiedId(
+                    QualifiedId(QualifiedId(QualifiedId(UnqualifiedId("O1"), "O2"), "O3"), "O4")
+                  , "O5"
+                  )
+                , IWild()
+                )
+              )
+            , DF2TM(
+                None()
+              , None()
+              , VD2DF(
+                  ValDef(
+                    "y"
+                  , IF2TY(ST2AT(UnqualifiedId("Int"), None()))
+                  , PathExpr(UnqualifiedId("x"))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

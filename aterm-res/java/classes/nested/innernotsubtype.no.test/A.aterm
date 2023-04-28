@@ -1,0 +1,24 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          []
+        , Id("A")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              CD2CMD(
+                NCD2CD(
+                  ClassDeclaration([], Id("B"), None(), None(), None(), [])
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

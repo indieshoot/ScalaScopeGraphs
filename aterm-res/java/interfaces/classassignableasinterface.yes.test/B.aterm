@@ -1,0 +1,34 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("B")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  [Public()]
+                , URT2UT(UCT2URT(ClassType(Id("I"), None())))
+                , [ VariableDeclInit(
+                      VariableDecl(Id("f"))
+                    , E2VI(
+                        UI2E(
+                          NewInstance(None(), [], Id("A"), [], None(), [])
+                        )
+                      )
+                    )
+                  ]
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

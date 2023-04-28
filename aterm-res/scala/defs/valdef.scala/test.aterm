@@ -1,0 +1,29 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "O"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , VD2DF(
+                  ValDef(
+                    "x"
+                  , IF2TY(ST2AT(UnqualifiedId("Int"), None()))
+                  , Lit(IntLit("42"))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

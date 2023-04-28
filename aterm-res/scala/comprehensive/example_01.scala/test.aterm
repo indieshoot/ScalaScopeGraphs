@@ -1,0 +1,212 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "Numbers"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , TD2DF(TypeDef("I", IF2TY(ST2AT(UnqualifiedId("Int"), None()))))
+              )
+            , DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS(
+                      "const"
+                    , None()
+                    , [ ParamClause(
+                          [Param("i1", Some(IF2TY(ST2AT(UnqualifiedId("I"), None()))))]
+                        )
+                      , ParamClause(
+                          [Param("i2", Some(IF2TY(ST2AT(UnqualifiedId("I"), None()))))]
+                        )
+                      ]
+                    )
+                  , Some(IF2TY(ST2AT(UnqualifiedId("Int"), None())))
+                  , PathExpr(UnqualifiedId("i1"))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  , DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "Functions"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS(
+                      "const"
+                    , None()
+                    , [ ParamClause(
+                          [Param("i1", Some(IF2TY(ST2AT(UnqualifiedId("Int"), None()))))]
+                        )
+                      , ParamClause(
+                          [Param("i2", Some(IF2TY(ST2AT(UnqualifiedId("Int"), None()))))]
+                        )
+                      ]
+                    )
+                  , Some(IF2TY(ST2AT(UnqualifiedId("Int"), None())))
+                  , PathExpr(UnqualifiedId("i1"))
+                  )
+                )
+              )
+            , DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS(
+                      "flip"
+                    , None()
+                    , [ ParamClause(
+                          [ Param(
+                              "f"
+                            , Some(
+                                FunTy(
+                                  Single(ST2AT(UnqualifiedId("Int"), None()))
+                                , FunTy(
+                                    Single(ST2AT(UnqualifiedId("Int"), None()))
+                                  , IF2TY(ST2AT(UnqualifiedId("Int"), None()))
+                                  )
+                                )
+                              )
+                            )
+                          ]
+                        )
+                      , ParamClause(
+                          [Param("i1", Some(IF2TY(ST2AT(UnqualifiedId("Int"), None()))))]
+                        )
+                      , ParamClause(
+                          [Param("i2", Some(IF2TY(ST2AT(UnqualifiedId("Int"), None()))))]
+                        )
+                      ]
+                    )
+                  , Some(IF2TY(ST2AT(UnqualifiedId("Int"), None())))
+                  , BE2EX(
+                      BL2BE(
+                        Block(
+                          []
+                        , Some(
+                            Call(
+                              Call(PathExpr(UnqualifiedId("f")), [PathExpr(UnqualifiedId("i2"))])
+                            , [PathExpr(UnqualifiedId("i1"))]
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            , DF2TM(
+                None()
+              , None()
+              , TM2DF(OD2TM(ObjectDef("Functions", NoExtends(), TemplateBody(None(), []))))
+              )
+            ]
+          )
+        )
+      )
+    )
+  , DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "Test"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ IM2TM(
+                ImportExpr(UnqualifiedId("Numbers"), IHide([Rename("I", "Number")]))
+              )
+            , DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS(
+                      "compute_42"
+                    , None()
+                    , [ ParamClause(
+                          [Param("i", Some(IF2TY(ST2AT(UnqualifiedId("Number"), None()))))]
+                        )
+                      ]
+                    )
+                  , Some(IF2TY(ST2AT(UnqualifiedId("Number"), None())))
+                  , BE2EX(
+                      BL2BE(
+                        Block(
+                          [ DF2BS(
+                              VD2DF(
+                                ValDef(
+                                  "x"
+                                , IF2TY(ST2AT(UnqualifiedId("Int"), None()))
+                                , Call(
+                                    Call(PathExpr(UnqualifiedId("const")), [PathExpr(UnqualifiedId("i"))])
+                                  , [Lit(IntLit("18"))]
+                                  )
+                                )
+                              )
+                            )
+                          , IM2BS(
+                              ImportExpr(
+                                UnqualifiedId("Functions")
+                              , IReveal([Rename("flip", "const"), Hide("const")])
+                              )
+                            )
+                          ]
+                        , Some(
+                            BE2EX(
+                              BL2BE(
+                                Block(
+                                  []
+                                , Some(
+                                    Call(
+                                      Call(
+                                        Call(
+                                          PathExpr(UnqualifiedId("const"))
+                                        , [PathExpr(QualifiedId(UnqualifiedId("Numbers"), "const"))]
+                                        )
+                                      , [PathExpr(UnqualifiedId("x"))]
+                                      )
+                                    , [Lit(IntLit("42"))]
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

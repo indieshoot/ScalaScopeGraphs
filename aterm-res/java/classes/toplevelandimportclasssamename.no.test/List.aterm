@@ -1,0 +1,23 @@
+CompilationUnit(
+  None()
+, [ SingleTypeImport(
+      TypeName(
+        PackageOrTypeName(PackageOrTypeName(Id("javas")), Id("util"))
+      , Id("List")
+      )
+    )
+  ]
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("List")
+        , None()
+        , None()
+        , None()
+        , []
+        )
+      )
+    )
+  ]
+)

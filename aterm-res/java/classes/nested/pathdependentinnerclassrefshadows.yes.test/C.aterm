@@ -1,0 +1,74 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("C")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(Void(), Id("m"), NoParams(), LAD2ADE([]), None())
+                , B2MB(
+                    Block(
+                      [ LVDS2BS(
+                          LocVarDeclStm(
+                            LocalVarDecl(
+                              []
+                            , URT2UT(UCT2URT(ClassType(Id("A2"), None())))
+                            , [ VariableDeclInit(
+                                  VariableDecl(Id("a"))
+                                , E2VI(
+                                    UI2E(
+                                      NewInstance(None(), [], Id("A2"), [], None(), [])
+                                    )
+                                  )
+                                )
+                              ]
+                            )
+                          )
+                        )
+                      , LVDS2BS(
+                          LocVarDeclStm(
+                            LocalVarDecl(
+                              []
+                            , URT2UT(
+                                UCT2URT(
+                                  ClassOrInterfaceTypeMember(
+                                    ClassType(Id("A2"), None())
+                                  , []
+                                  , Id("B")
+                                  , None()
+                                  )
+                                )
+                              )
+                            , [ VariableDeclInit(
+                                  VariableDecl(Id("b"))
+                                , E2VI(
+                                    QualifiedInstance(
+                                      EN2E(ExpressionName(Id("a")))
+                                    , NewInstance(None(), [], Id("B"), [], None(), [])
+                                    )
+                                  )
+                                )
+                              ]
+                            )
+                          )
+                        )
+                      ]
+                    )
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

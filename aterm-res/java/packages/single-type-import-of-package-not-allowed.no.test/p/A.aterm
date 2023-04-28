@@ -1,0 +1,17 @@
+CompilationUnit(
+  Some(PackageDeclaration([], [Id("p")]))
+, [SingleTypeImport(TypeName(PackageOrTypeName(Id("q")), Id("r")))]
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("A")
+        , None()
+        , None()
+        , None()
+        , []
+        )
+      )
+    )
+  ]
+)

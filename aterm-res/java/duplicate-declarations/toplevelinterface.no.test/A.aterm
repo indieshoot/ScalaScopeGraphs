@@ -1,0 +1,11 @@
+CompilationUnit(
+  None()
+, []
+, [ ID2TD(
+      NormalInterface([Public()], Id("A"), None(), None(), [])
+    )
+  , ID2TD(
+      NormalInterface([Public()], Id("A"), None(), None(), [])
+    )
+  ]
+)

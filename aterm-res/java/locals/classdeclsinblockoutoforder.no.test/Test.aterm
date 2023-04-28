@@ -1,0 +1,47 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          []
+        , Id("A")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(Void(), Id("m"), NoParams(), LAD2ADE([]), None())
+                , B2MB(
+                    Block(
+                      [ CD2BS(
+                          NCD2CD(
+                            ClassDeclaration(
+                              []
+                            , Id("C")
+                            , None()
+                            , Some(SuperClass(ClassType([], Id("B"), None())))
+                            , None()
+                            , []
+                            )
+                          )
+                        )
+                      , CD2BS(
+                          NCD2CD(
+                            ClassDeclaration([], Id("B"), None(), None(), None(), [])
+                          )
+                        )
+                      ]
+                    )
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

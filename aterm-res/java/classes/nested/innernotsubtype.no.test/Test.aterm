@@ -1,0 +1,57 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          []
+        , Id("Test")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  []
+                , MethodHeader(
+                    UT2R(
+                      URT2UT(
+                        UCT2URT(
+                          ClassOrInterfaceTypeMember(
+                            ClassType(Id("A"), None())
+                          , []
+                          , Id("B")
+                          , None()
+                          )
+                        )
+                      )
+                    )
+                  , Id("m")
+                  , NoParams()
+                  , LAD2ADE([])
+                  , None()
+                  )
+                , B2MB(
+                    Block(
+                      [ S2BS(
+                          Return(
+                            QualifiedInstance(
+                              UI2E(
+                                NewInstance(None(), [], Id("C"), [], None(), [])
+                              )
+                            , NewInstance(None(), [], Id("D"), [], None(), [])
+                            )
+                          )
+                        )
+                      ]
+                    )
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

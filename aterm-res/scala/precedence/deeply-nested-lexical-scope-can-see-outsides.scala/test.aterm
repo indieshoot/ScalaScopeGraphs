@@ -1,0 +1,103 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "N"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , TD2DF(TypeDef("X", IF2TY(ST2AT(UnqualifiedId("Int"), None()))))
+              )
+            ]
+          )
+        )
+      )
+    )
+  , DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "O"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ IM2TM(ImportExpr(UnqualifiedId("N"), IWild()))
+            , DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS("g", None(), [])
+                  , Some(IF2TY(ST2AT(UnqualifiedId("Int"), None())))
+                  , Lit(IntLit("42"))
+                  )
+                )
+              )
+            , DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS("f", None(), [])
+                  , Some(IF2TY(ST2AT(UnqualifiedId("Int"), None())))
+                  , BE2EX(
+                      BL2BE(
+                        Block(
+                          []
+                        , Some(
+                            BE2EX(
+                              BL2BE(
+                                Block(
+                                  []
+                                , Some(
+                                    BE2EX(
+                                      BL2BE(
+                                        Block(
+                                          [ DF2BS(
+                                              FD2DF(
+                                                FunDef(
+                                                  FS("h", None(), [])
+                                                , Some(IF2TY(ST2AT(UnqualifiedId("X"), None())))
+                                                , BE2EX(
+                                                    BL2BE(
+                                                      Block(
+                                                        []
+                                                      , Some(
+                                                          BE2EX(BL2BE(Block([], Some(PathExpr(UnqualifiedId("g"))))))
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          ]
+                                        , Some(PathExpr(UnqualifiedId("h")))
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

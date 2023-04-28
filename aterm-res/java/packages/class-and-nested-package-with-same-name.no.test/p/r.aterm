@@ -1,0 +1,17 @@
+CompilationUnit(
+  Some(PackageDeclaration([], [Id("p")]))
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("r")
+        , None()
+        , None()
+        , None()
+        , []
+        )
+      )
+    )
+  ]
+)

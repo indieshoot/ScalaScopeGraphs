@@ -1,0 +1,26 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("C")
+        , None()
+        , Some(
+            SuperClass(
+              ClassOrInterfaceTypeMember(
+                ClassType([], Id("A"), None())
+              , []
+              , Id("D")
+              , None()
+              )
+            )
+          )
+        , None()
+        , []
+        )
+      )
+    )
+  ]
+)

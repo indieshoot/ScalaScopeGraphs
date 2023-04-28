@@ -1,0 +1,58 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          []
+        , Id("Point")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  [Public()]
+                , UPT2UT(NumericType(Int()))
+                , [VDI2VD(VariableDecl(Id("x"))), VDI2VD(VariableDecl(Id("y")))]
+                )
+              )
+            )
+          , CD2CBD(
+              ConstrDecl(
+                [Public()]
+              , None()
+              , Id("Point2D")
+              , ParamList(
+                  [FormalParam([], UPT2UT(NumericType(Int())), VariableDecl(Id("x")))]
+                , FP2LFP(
+                    FormalParam([], UPT2UT(NumericType(Int())), VariableDecl(Id("y")))
+                  )
+                )
+              , None()
+              , None()
+              , [ S2BS(
+                    ExpressionStatement(
+                      Assign(
+                        FA2LHS(Field(This(), Id("x")))
+                      , EN2E(ExpressionName(Id("x")))
+                      )
+                    )
+                  )
+                , S2BS(
+                    ExpressionStatement(
+                      Assign(
+                        FA2LHS(Field(This(), Id("y")))
+                      , EN2E(ExpressionName(Id("y")))
+                      )
+                    )
+                  )
+                ]
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

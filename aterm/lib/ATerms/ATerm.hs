@@ -20,5 +20,4 @@ instance Show ATerm where
   show = pretty
 
 atermList :: [ATerm] -> ATerm
-atermList []       = ANil
-atermList (at:ats) = ACons at $ atermList ats
+atermList = foldr ACons ANil

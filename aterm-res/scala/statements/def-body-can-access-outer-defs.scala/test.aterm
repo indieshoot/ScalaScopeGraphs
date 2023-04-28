@@ -1,0 +1,40 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "O"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS("f", None(), [])
+                  , Some(IF2TY(ST2AT(UnqualifiedId("Int"), None())))
+                  , BE2EX(BL2BE(Block([], Some(PathExpr(UnqualifiedId("g"))))))
+                  )
+                )
+              )
+            , DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS("g", None(), [])
+                  , Some(IF2TY(ST2AT(UnqualifiedId("Int"), None())))
+                  , Lit(IntLit("42"))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

@@ -1,0 +1,15 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "A"
+        , NoExtends()
+        , TemplateBody(None(), [IM2TM(ImportExpr(UnqualifiedId("B"), IWild()))])
+        )
+      )
+    )
+  ]
+)

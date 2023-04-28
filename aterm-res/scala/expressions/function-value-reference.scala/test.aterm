@@ -1,0 +1,50 @@
+CompilationUnit(
+  None()
+, [ DF2TS(
+      None()
+    , None()
+    , OD2TM(
+        ObjectDef(
+          "O"
+        , NoExtends()
+        , TemplateBody(
+            None()
+          , [ DF2TM(
+                None()
+              , None()
+              , FD2DF(
+                  FunDef(
+                    FS(
+                      "f"
+                    , None()
+                    , [ ParamClause(
+                          [ Param(
+                              "g"
+                            , Some(
+                                FunTy(
+                                  Single(ST2AT(UnqualifiedId("Int"), None()))
+                                , IF2TY(ST2AT(UnqualifiedId("Boolean"), None()))
+                                )
+                              )
+                            )
+                          ]
+                        )
+                      ]
+                    )
+                  , Some(
+                      FunTy(
+                        Single(ST2AT(UnqualifiedId("Int"), None()))
+                      , IF2TY(ST2AT(UnqualifiedId("Boolean"), None()))
+                      )
+                    )
+                  , PathExpr(UnqualifiedId("g"))
+                  )
+                )
+              )
+            ]
+          )
+        )
+      )
+    )
+  ]
+)

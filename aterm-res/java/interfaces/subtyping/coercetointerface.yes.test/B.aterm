@@ -1,0 +1,45 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("B")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              FD2CMD(
+                FieldDecl(
+                  [Public()]
+                , URT2UT(UCT2URT(ClassType(Id("A"), None())))
+                , [VDI2VD(VariableDecl(Id("a")))]
+                )
+              )
+            )
+          , CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(
+                    UT2R(URT2UT(UCT2URT(ClassType(Id("I"), None()))))
+                  , Id("m")
+                  , NoParams()
+                  , LAD2ADE([])
+                  , None()
+                  )
+                , B2MB(
+                    Block(
+                      [S2BS(Return(FA2E(Field(This(), Id("a")))))]
+                    )
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)

@@ -1,0 +1,18 @@
+Program(
+  None()
+, [ Module(
+      "A"
+    , [ Module(
+          "B"
+        , [Module("C", [Def(DefBind("x", Int("5")))])]
+        )
+      , Module(
+          "D"
+        , [ Import(ModQRef(ModRef("B"), "C"))
+          , Def(DefBind("y", Var(VarRef("x"))))
+          ]
+        )
+      ]
+    )
+  ]
+)

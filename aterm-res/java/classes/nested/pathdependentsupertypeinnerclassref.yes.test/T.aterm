@@ -1,0 +1,55 @@
+CompilationUnit(
+  None()
+, []
+, [ CD2TD(
+      NCD2CD(
+        ClassDeclaration(
+          [Public()]
+        , Id("T")
+        , None()
+        , None()
+        , None()
+        , [ CMD2CBD(
+              MD2CMD(
+                MethodDecl(
+                  [Public()]
+                , MethodHeader(Void(), Id("m"), NoParams(), LAD2ADE([]), None())
+                , B2MB(
+                    Block(
+                      [ LVDS2BS(
+                          LocVarDeclStm(
+                            LocalVarDecl(
+                              []
+                            , URT2UT(UCT2URT(ClassType(Id("C"), None())))
+                            , [ VariableDeclInit(
+                                  VariableDecl(Id("c"))
+                                , E2VI(
+                                    UI2E(
+                                      NewInstance(None(), [], Id("C"), [], None(), [])
+                                    )
+                                  )
+                                )
+                              ]
+                            )
+                          )
+                        )
+                      , S2BS(
+                          ExpressionStatement(
+                            QualifiedInstance(
+                              EN2E(ExpressionName(Id("c")))
+                            , NewInstance(None(), [], Id("B"), [], None(), [])
+                            )
+                          )
+                        )
+                      ]
+                    )
+                  )
+                )
+              )
+            )
+          ]
+        )
+      )
+    )
+  ]
+)
