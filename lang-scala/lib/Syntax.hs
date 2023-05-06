@@ -43,21 +43,20 @@ data ScModule
 
 data ScExp 
   = ScId ScIdent
-  | ScLiteral ScLiteral
+  | ScLit ScLiteral
   | ScBinOp ScExp ScOp ScExp
   | ScIf ScExp ScExp ScExp
-  | ScFun [ScParam] ScExp
-  | ScApp ScExp [ScExp]
-  | ScLet ScPat ScExp ScExp
-  | ScMatch ScExp [(ScPat, ScExp)]
+  | ScFun ScParam ScExp -- [ScParam] later
+  | ScApp ScExp ScExp -- [ScExp] later
+  -- | ScLet ScPat ScExp ScExp
+  -- | ScMatch ScExp [(ScPat, ScExp)]
   -- | ScRecord [(String, ScExp)] -- record creation = case class in Scala
   deriving (Eq, Show)
-  --   | App ScExp ScExp
-  -- | LetRec (String, ScExp) ScExp
+  --   | LetRec (String, ScExp) ScExp
 
 data ScIdent
-  = ScILiteral String
-  | ScINested ScModule String
+  = ScIdentifier String
+  -- | ScINested ScModule String
   deriving (Eq, Show)
 
 data ScLiteral
