@@ -1,6 +1,6 @@
 module Main where
-import TypeCheck (runTC)
-import Syntax (example)
+import TypeChecker (runTC)
+import ScSyntax (example)
 
 main :: IO ()
 main = do

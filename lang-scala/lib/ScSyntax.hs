@@ -1,6 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
 
-module Syntax where
+module ScSyntax where
 
 import Data.Term
 
@@ -10,7 +12,7 @@ instance Show Ty where
   show (Const i) = "α" ++ show i
   show (Var i) = "α" ++ show i
   show (Term "->" [t1, t2]) = show t1 ++ " -> " ++ show t2
-  show (Term "Int" []) = "Int"
+  show (Term "Num" []) = "Num"
   show (Term "Bool" []) = "Boolean"
   show _ = "undefined"
 
@@ -23,14 +25,14 @@ funT f t = Term "->" [f, t]
 
 
 -- Inspiration: https://www.scala-lang.org/files/archive/spec/2.13/13-syntax-summary.html
-type ScProg = ScProg [ScDecl]
+type ScProg = [ScDecl]
 
 -- ScDecl is an algebraic data type that can take on one of three forms:
 data ScDecl
   = ScMod String [ScDecl]
   | ScImport ScModule
-  | ScVal ScPat ScExp -- val x = 2 + 3
-  | ScDef String [ScParam] ScExp -- def add(x: Int, y: Int): Int = x + y
+  | ScDef String ScExp -- [ScParam]  - def add(x: Int, y: Int): Int = x + y
+  | ScObj String [ScDecl]
   -- | ScTrait String [ScParam] [ScDecl] -- similar to interfaces in Java
   deriving (Eq, Show)
 
@@ -48,8 +50,6 @@ data ScExp
   | ScIf ScExp ScExp ScExp
   | ScFun ScParam ScExp -- [ScParam] later
   | ScApp ScExp ScExp -- [ScExp] later
-  -- | ScLet ScPat ScExp ScExp
-  -- | ScMatch ScExp [(ScPat, ScExp)]
   -- | ScRecord [(String, ScExp)] -- record creation = case class in Scala
   deriving (Eq, Show)
   --   | LetRec (String, ScExp) ScExp
@@ -60,17 +60,9 @@ data ScIdent
   deriving (Eq, Show)
 
 data ScLiteral
-  = ScInt Integer
+  = ScInt Int
   | ScBool Bool
   | ScString String
-  deriving (Eq, Show)
-
-data ScPat -- Scala Pattern for pattern matching
-  = ScVarPat String
-  | ScLitPat ScLiteral
-  | ScTuplePat [ScPat]
-  | ScConsPat ScPat ScPat
-  -- | ScRecordPat [(String, ScPat)] -- pattern matching against records
   deriving (Eq, Show)
 
 data ScOp
@@ -82,45 +74,21 @@ data ScOp
   | ScLessThan
   deriving (Eq, Show)
 
-  -- Literal           ::=  [‘-’] integerLiteral
-  --                     |  [‘-’] floatingPointLiteral
-  --                     |  booleanLiteral
-  --                     |  characterLiteral
-  --                     |  stringLiteral
-  --                     |  interpolatedString
-  --                     |  symbolLiteral
-  --                     |  ‘null’
-
 -- data ScFBind = ScFBind String ScExp deriving (Eq, Show)
 
 data ScType
-  = ScInt
-  | ScBool
-  | ScString
+  = ScNum
+  | ScBoolean
+  | ScStr
   | ScFn ScType ScType
   deriving (Eq, Show)
 
 toTy :: ScType -> Ty
-toTy ScInt = intT
-toTy ScBool = boolT
-toTy ScString = Term "String" [] -- defined in the Scala standard library
+toTy ScNum = intT
+toTy ScBoolean = boolT
+toTy ScStr = Term "String" [] -- defined in the Scala standard library
 toTy (ScFn f t) = funT (toTy f) (toTy t)
 
 
--- data Expr
---   = Num Int
---   | Tru
---   | Fls
---   | Plus Expr Expr
---   | Conditional Expr Expr Expr
---   | Nil Type
---   | Cons Expr Expr
---   | Head Expr
---   | Tail Expr
---   | Tuple [Expr]
---   | Index Int Expr
---   | Let (String, Type, Expr) Expr
---   | App Expr Expr
---   | Ident String
---   | Abs String Type Expr
---   deriving (Eq, Show)
+example :: ScExp
+example = ScLit (ScInt 1)
