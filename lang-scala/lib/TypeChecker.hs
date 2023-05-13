@@ -11,8 +11,8 @@ import Free.Error
 import ScSyntax
 import Free.Logic.Exists
 import Free.Logic.Equals
+import Debug.Trace
 import qualified Data.Term as T
-
 
 
 ----------------------------
@@ -57,6 +57,35 @@ re = Dot (Star $ Atom P) $ Atom D
 -- Path order based on length
 pShortest :: PathOrder Label Decl
 pShortest p1 p2 = lenRPath p1 < lenRPath p2
+
+-- Path order based on Ministatix priorities.
+pStatix :: PathOrder Label Decl
+pStatix p1 p2 = label == LT || label == EQ
+  where
+    label = pStatixHelper p1 p2
+
+pStatixHelper :: ResolvedPath Label Decl -> ResolvedPath Label Decl -> Ordering
+pStatixHelper (ResolvedPath p1 _ _) (ResolvedPath p2 _ _) = comparePaths (extractPath p1) (extractPath p2)
+  where
+    comparePaths [] [] = EQ
+    comparePaths (_:_) [] = GT
+    comparePaths [] (_:_) = LT
+    comparePaths (x:xs) (y:ys) = case compareLabel x y of
+      Just r -> r
+      Nothing -> comparePaths xs ys
+    compareLabel MOD P = Just LT
+    compareLabel P MOD = Just GT
+    compareLabel MOD I = Just LT
+    compareLabel I MOD = Just GT
+    compareLabel D P = Just LT
+    compareLabel P D = Just GT
+    compareLabel D I = Just LT
+    compareLabel I D = Just GT
+    compareLabel I P = Just LT
+    compareLabel P I = Just GT
+    compareLabel _ _ = Nothing
+    extractPath (Start _) = []
+    extractPath (Step p l _) = extractPath p ++ [l]
 
 -- Match declaration with particular name
 matchDecl :: String -> Decl -> Bool
@@ -108,6 +137,7 @@ tcScExp (ScApp func app) s = do
     (T.Term "->" [from, to]) | from == a' -> return to
     (T.Term "->" _) -> err "Arguments do not match."
     _ -> err "Not function."
+tcScExp (ScObj s) _ = return $ objT s
 
 tcBinOp :: (Functor f, 
               -- Exists Ty < f, Equals Ty < f, 
@@ -126,12 +156,4 @@ runTC e = un
         $ handle hErr
         $ handle_ hScope (tcScExp e 0) emptyGraph
 
--- >>> tcScExp (ScLiteral (ScInt 1)) 0
--- Illegal term-level use of the type constructor `ScLiteral'
---   imported from `Syntax' at C:UsersRADUDocumentsScalaScopeGraphslang-scalalibTypeChecker.hs:11:1-13
---   (and originally defined
---      at C:\Users\RADU\Documents\ScalaScopeGraphs\lang-scala\lib\Syntax.hs:(60,1)-(64,21))
--- In the first argument of `tcScExp', namely `(ScLiteral (ScInt 1))'
--- In the expression: tcScExp (ScLiteral (ScInt 1)) 0
--- In an equation for `it_awLg':
---     it_awLg = tcScExp (ScLiteral (ScInt 1)) 0
+

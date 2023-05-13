@@ -14,6 +14,7 @@ instance Show Ty where
   show (Term "->" [t1, t2]) = show t1 ++ " -> " ++ show t2
   show (Term "Num" []) = "Num"
   show (Term "Bool" []) = "Boolean"
+  show (Term "Object" []) = "Object"
   show _ = "undefined"
 
 intT :: Term c
@@ -22,6 +23,8 @@ boolT :: Term c
 boolT = Term "Bool" []
 funT :: Term c -> Term c -> Term c
 funT f t = Term "->" [f, t]
+objT :: String -> Ty
+objT s = Term ("MyObject_" ++ s) []
 
 
 -- Inspiration: https://www.scala-lang.org/files/archive/spec/2.13/13-syntax-summary.html
@@ -32,7 +35,7 @@ data ScDecl
   = ScMod String [ScDecl]
   | ScImport ScModule
   | ScDef String ScExp -- [ScParam]  - def add(x: Int, y: Int): Int = x + y
-  | ScObj String [ScDecl]
+  | ScObject String [ScDecl] -- object MyObj { ... }
   -- | ScTrait String [ScParam] [ScDecl] -- similar to interfaces in Java
   deriving (Eq, Show)
 
@@ -50,6 +53,7 @@ data ScExp
   | ScIf ScExp ScExp ScExp
   | ScFun ScParam ScExp -- [ScParam] later
   | ScApp ScExp ScExp -- [ScExp] later
+  | ScObj String -- MyObj
   -- | ScRecord [(String, ScExp)] -- record creation = case class in Scala
   deriving (Eq, Show)
   --   | LetRec (String, ScExp) ScExp
@@ -81,6 +85,7 @@ data ScType
   | ScBoolean
   | ScStr
   | ScFn ScType ScType
+  | ScObjTy String
   deriving (Eq, Show)
 
 toTy :: ScType -> Ty
@@ -88,6 +93,7 @@ toTy ScNum = intT
 toTy ScBoolean = boolT
 toTy ScStr = Term "String" [] -- defined in the Scala standard library
 toTy (ScFn f t) = funT (toTy f) (toTy t)
+toTy (ScObjTy s) = objT s
 
 
 example :: ScExp
