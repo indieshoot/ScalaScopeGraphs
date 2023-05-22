@@ -18,12 +18,13 @@ parse s = do
 
 
 parseDecl :: ATerm -> Either String ScDecl
-parseDecl (AFunc "Module" [AStr name, decls]) = do
-  decls' <- mapM parseDecl $ toList decls
-  return $ ScMod name decls'    
+-- parseDecl (AFunc "Module" [AStr name, decls]) = do
+--   decls' <- mapM parseDecl $ toList decls
+--   return $ ScMod name decls'    
 parseDecl (AFunc "Def" (b:_)) = do
   (p, q) <- parseBind b
-  return $ ScDef p q
+  t <- parseType b
+  return $ ScVal (ScParam p t) q
   where
     parseBind (AFunc "DefBind" [AStr n, e]) = do
       e' <- parseExp e
@@ -33,12 +34,12 @@ parseDecl t = Left $ "Unknown declaration: " ++ show t
 
 
 parseExp :: ATerm -> Either String ScExp
-parseExp (AFunc "Int" [AStr v]) = return $ ScLit (ScInt (read v :: Int))
-parseExp (AFunc "True" []) = return $ ScLit (ScBool True)
-parseExp (AFunc "False" []) = return $ ScLit (ScBool False)
+parseExp (AFunc "Int" [AStr v]) = return $ ScNum (read v :: Int)
+parseExp (AFunc "True" []) = return $ (ScBool True)
+parseExp (AFunc "False" []) = return $ (ScBool False)
 parseExp (AFunc "Var" [v]) = do
   v' <- parseVar v
-  return $ ScId v'
+  return $ v'
 parseExp (AFunc "If" [c, t, f]) = do
   c' <- parseExp c
   t' <- parseExp t
@@ -56,21 +57,21 @@ parseExp (AFunc bin [l, r]) = do
   l' <- parseExp l
   r' <- parseExp r
   case bin of
-    "Add" -> return $ ScBinOp l' ScAdd r'
-    "Sub" -> return $ ScBinOp l' ScMinus r'
-    "Mul" -> return $ ScBinOp l' ScMult r'
-    "Eq" -> return $ ScBinOp l' ScEquals r'
+    "Add" -> return $ ScPlus l' r'
+    -- "Sub" -> return $ ScBinOp l' ScMinus r'
+    -- "Mul" -> return $ ScBinOp l' ScMult r'
+    -- "Eq" -> return $ ScBinOp l' ScEquals r'
     _ -> Left $ "Unknown binop: " ++ bin 
 parseExp t = Left $ "Unknown construct: " ++ show t
 
-parseType :: ATerm -> Either String ScType
-parseType (AFunc "TInt" []) = return ScNum
-parseType (AFunc "TBool" []) = return ScBoolean
+parseType :: ATerm -> Either String Type
+parseType (AFunc "TInt" []) = return NumT
+parseType (AFunc "TBool" []) = return BoolT
 parseType t = Left $ "Unknown type: " ++ show t
 
 
-parseVar :: ATerm -> Either String ScIdent
-parseVar (AFunc "VarRef" [AStr n]) = return $ ScIdentifier n
+parseVar :: ATerm -> Either String ScExp
+parseVar (AFunc "VarRef" [AStr n]) = return $ ScId n
 parseVar t = Left $ "Unknown variable: " ++ show t
 
 toList :: ATerm -> [ATerm]
