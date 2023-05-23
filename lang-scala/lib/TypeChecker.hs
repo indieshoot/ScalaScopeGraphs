@@ -10,6 +10,9 @@ import qualified Free.Scope as S (edge, new, sink)
 import Free.Error
 import ScSyntax
 import Debug.Trace
+import Free.Logic.Equals
+import qualified Data.Map as Map
+import Control.Applicative (Alternative(empty))
 
 
 ----------------------------
@@ -18,14 +21,15 @@ import Debug.Trace
 
 data Label
   = P -- Lexical Parent Label
-  | I -- Import Label
+  | ExplicitI -- Explicit Import Label
+  | WildcardI -- Wildcard Import Label
   | VAR -- Variable Label
   | OBJ -- Object label
   deriving (Show, Eq)
 
 data Decl
   = Decl String Type   -- Variable declaration
-  | Import String Sc -- Importdeclaration
+  | Import String Sc -- Import declaration
   | ObjD String Sc -- Object declaration
   deriving (Eq)
 
@@ -59,33 +63,33 @@ pShortest :: PathOrder Label Decl
 pShortest p1 p2 = lenRPath p1 < lenRPath p2
 
 -- Path order based on Ministatix priorities.
-pStatix :: PathOrder Label Decl
-pStatix p1 p2 = label == LT || label == EQ
-  where
-    label = pStatixHelper p1 p2
+-- pStatix :: PathOrder Label Decl
+-- pStatix p1 p2 = label == LT || label == EQ
+--   where
+--     label = pStatixHelper p1 p2
 
-pStatixHelper :: ResolvedPath Label Decl -> ResolvedPath Label Decl -> Ordering
-pStatixHelper (ResolvedPath p1 _ _) (ResolvedPath p2 _ _) = comparePaths (extractPath p1) (extractPath p2)
-  where
-    comparePaths [] [] = EQ
-    comparePaths (_:_) [] = GT
-    comparePaths [] (_:_) = LT
-    comparePaths (x:xs) (y:ys) = case compareLabel x y of
-      Just r -> r
-      Nothing -> comparePaths xs ys
-    -- compareLabel MOD P = Just LT
-    -- compareLabel P MOD = Just GT
-    -- compareLabel MOD I = Just LT
-    -- compareLabel I MOD = Just GT
-    compareLabel VAR P = Just LT
-    compareLabel P VAR = Just GT
-    compareLabel VAR I = Just LT
-    compareLabel I VAR = Just GT
-    compareLabel I P = Just LT
-    compareLabel P I = Just GT
-    compareLabel _ _ = Nothing
-    extractPath (Start _) = []
-    extractPath (Step p l _) = extractPath p ++ [l]
+-- pStatixHelper :: ResolvedPath Label Decl -> ResolvedPath Label Decl -> Ordering
+-- pStatixHelper (ResolvedPath p1 _ _) (ResolvedPath p2 _ _) = comparePaths (extractPath p1) (extractPath p2)
+--   where
+--     comparePaths [] [] = EQ
+--     comparePaths (_:_) [] = GT
+--     comparePaths [] (_:_) = LT
+--     comparePaths (x:xs) (y:ys) = case compareLabel x y of
+--       Just r -> r
+--       Nothing -> comparePaths xs ys
+--     -- compareLabel MOD P = Just LT
+--     -- compareLabel P MOD = Just GT
+--     -- compareLabel MOD I = Just LT
+--     -- compareLabel I MOD = Just GT
+--     compareLabel VAR P = Just LT
+--     compareLabel P VAR = Just GT
+--     compareLabel VAR I = Just LT
+--     compareLabel I VAR = Just GT
+--     compareLabel I P = Just LT
+--     compareLabel P I = Just GT
+--     compareLabel _ _ = Nothing
+--     extractPath (Start _) = []
+--     extractPath (Step p l _) = extractPath p ++ [l]
 
 -- Match declaration with particular name
 matchDecl :: String -> Decl -> Bool
@@ -96,6 +100,14 @@ matchDecl x (ObjD x' _) = x == x'
 ------------------
 -- Type Checker --
 ------------------
+
+-- type check the scala program.
+tcAll :: ( Functor f, Error String < f, Scope Sc Label Decl < f)
+   => ScProg -> Sc -> Free f ()
+tcAll p s = do
+  mapM_ (`buildSG` s) p
+  mapM_ (`tcScDecl` s) p
+
 
 -- Function to type check scala expressions
 tcScExp :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScExp -> Sc -> Free f Type
@@ -130,7 +142,7 @@ tcScExp (ScApp func app) s = do
     (FunT t _) -> err $ "Expected argument of type '" ++ show t ++ "' got '" ++ show a' ++ "'"
     _ -> err "Not function."
 
-
+-- type check binary operators
 tcBinOp :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScExp -> ScExp -> Type -> Type -> Sc -> Free f Type
 tcBinOp l r inp out s = do
   tcL <- tcScExp l s
@@ -140,70 +152,61 @@ tcBinOp l r inp out s = do
   else
     err "Error when type checking a binary operator."
 
-
+-- type check declarations
 tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Type
 tcScDecl (ScVal (ScParam name t) expr) s = do
+  x <- query s re pShortest (matchDecl name)
+  if length x /= 1  then err "variable is defined more than once." 
+  else do
+    t' <- tcScExp expr s -- need to check
+    if t == t' then return (ValT name) else err "Type missmatch in val."
+tcScDecl (ScDef name t expr) s = do
+  x <- query s re pShortest (matchDecl name)
+  if length x /= 1  then err "variable is defined more than once." 
+  else do
+    t' <- tcScExp expr s -- need to check
+    if t == t' then return (ValT name) else err "Type missmatch in definition."
+    -- return t
+tcScDecl (ScObject name defs) s = do
+  -- type check declarations 
+  mapM_ (`tcScDecl` s) defs
+  return (ObjT name)
+tcScDecl (ScExplicitImport imp) s = do
+    ds <- query s re pShortest (matchDecl imp) <&> map projTy
+    case ds of
+        [] -> err $ "Imported module not found: " ++ imp
+        [t] -> return t
+        _ -> err "Multiple matching imports found" 
+tcScDecl (ScWildcardImport wildcard) s = do
+    ds <- query s re pShortest (matchDecl wildcard) <&> map projTy
+    case ds of
+        [] -> err "No matching wildcard imports found"
+        [t] -> return t
+        _ -> err "Multiple matching wildcard imports found" 
+
+
+-- Build the scope graph
+buildSG :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f ()
+buildSG (ScVal (ScParam name t) _) s = do
     let newTy = t
     sink s VAR $ Decl name newTy
-    tcScExp expr s
-    return (ValT name)
-tcScDecl (ScDef name t expr) s = do
+buildSG (ScDef name t _) s = do
     let newTy = t
     s' <- new
     edge s' P s
     sink s' VAR $ Decl name newTy
-    tcScExp expr s'
-    return (ValT name)
-tcScDecl (ScObject name defs) s = do
+buildSG (ScObject name defs) s = do
     -- add object declarations scope
   sObjDef <- new
   -- add obj declaration to the outer scope
   sink s OBJ $ ObjD name sObjDef
   -- add edge between object scope and outer scope (which is the parent)
   edge sObjDef P s
-  -- type check declarations 
-  -- construct all the associated scopes of the obeject
-  mapM_ (`tcScDecl` sObjDef) defs
-  return (ObjT name)
+  -- construct all the associated scopes of the object
+  mapM_ (`buildSG` sObjDef) defs
+-- buildSG (ScExplicitImport imp) s = 
+-- buildSG (ScWildcardImport wildcard) s =  
 
-
--- tc (ClassE name fields methods static const) sc = do -- TODO make sure fields and methods are actually fields and methods 
---   sink sc D $ ClassDecl name fields methods static const
---   classScope <- new
---   edge classScope P sc
---   addSinksForFields fields classScope
---   addSinksForMethods methods classScope
---   return $ JavaClass name static const
-
-
--- tcScExp (ScObj s) _ = return $ ObjT s
-    -- case op of 
-    -- ScAdd -> tcBinOp l r intT intT s
-    -- ScMinus -> tcBinOp l r intT intT s
-    -- ScMult -> tcBinOp l r intT intT s
-    -- ScDiv -> tcBinOp l r intT intT s
-    -- ScEquals -> tcBinOp l r intT boolT s
-    -- ScLessThan -> tcBinOp l r intT boolT s
-
-
--- Create all declarations.
-  -- = AAnon Sc [LModule] [AnnotatedModTree] [LDecl]
-  -- | ANamed Sc String [LModule] [AnnotatedModTree] [LDecl]
--- constrDecls :: (Functor f, Error String < f, Scope Sc Label Decl < f) => [ScDecl] -> Sc -> Free f [(Sc, Type, ScExp)]
--- constrDecls decls s  = constrDecls' g children decls
-
--- Specifically, create declarations of current module and recurse to child modules.
--- constrDecls' :: (Functor f,  Error String < f, Scope Sc Label Decl < f) => Sc -> [ScDecl] -> Free f [(Sc, Type, ScExp)]
--- constrDecls' g children decls = do
---   curr <- catMaybes <$> mapM (make g) decls
---   rest <- concat <$> mapM constrDecls children
---   return $ curr ++ rest
---   where
---     make g (ScVal s e) = do
---       t <- exists
---       sink g V $ Var s t
---       return $ Just (g, t, e)
---     make _ _ = return Nothing
 
 -- Tie it all together
 runTC :: ScExp -> Either String (Type, Graph Label Decl)
@@ -215,4 +218,29 @@ runTCDecl :: ScDecl -> Either String (Type, Graph Label Decl)
 runTCDecl decl = un 
         $ handle hErr 
         $ handle_ hScope (tcScDecl decl 0) emptyGraph
+
+runTCAll :: ScProg -> Either String (Graph Label Decl)
+runTCAll prog = 
+  let tuple = un 
+        $ handle hErr
+        $ handle_ hScope (tcAll prog 0
+        :: Free ( Scope Sc Label Decl
+                + Error String
+                + Nop )
+                ()
+        ) emptyGraph
+    in case tuple of 
+      Left err -> Left err
+      Right ((), sg) -> Right sg
+
+
+
+-- tcScExp (ScObj s) _ = return $ ObjT s
+    -- case op of 
+    -- ScAdd -> tcBinOp l r intT intT s
+    -- ScMinus -> tcBinOp l r intT intT s
+    -- ScMult -> tcBinOp l r intT intT s
+    -- ScDiv -> tcBinOp l r intT intT s
+    -- ScEquals -> tcBinOp l r intT boolT s
+    -- ScLessThan -> tcBinOp l r intT boolT s
 

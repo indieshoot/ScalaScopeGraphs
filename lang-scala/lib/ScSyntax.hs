@@ -12,6 +12,7 @@ data Type
   -- | VarT String
   | FunT Type Type
   | ObjT String
+  | Unit -- unit type for void methods
   deriving Eq
 
 instance Show Type where
@@ -32,7 +33,8 @@ data ScDecl
   = ScVal ScParam ScExp 
   | ScDef String Type ScExp
   | ScObject String [ScDecl] -- object MyObj { ... }
-  -- | ScImport String -- nested later?
+  | ScExplicitImport String -- nested later?
+  | ScWildcardImport String
   -- | ScTrait String [ScParam] [ScDecl] -- similar to interfaces in Java
   deriving (Eq, Show)
 
