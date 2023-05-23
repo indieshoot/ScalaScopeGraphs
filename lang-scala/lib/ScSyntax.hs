@@ -5,6 +5,11 @@
 
 module ScSyntax where
 
+import Free
+
+import Free.Scope hiding (edge, new, sink)
+import qualified Free.Scope as S (edge, new, sink)
+
 data Type
   = NumT
   | BoolT
@@ -33,8 +38,8 @@ data ScDecl
   = ScVal ScParam ScExp 
   | ScDef String Type ScExp
   | ScObject String [ScDecl] -- object MyObj { ... }
-  | ScExplicitImport String -- nested later?
-  | ScWildcardImport String
+  | ScExplicitImport String Sc -- nested later?
+  | ScWildcardImport String Sc
   -- | ScTrait String [ScParam] [ScDecl] -- similar to interfaces in Java
   deriving (Eq, Show)
 

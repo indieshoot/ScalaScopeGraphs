@@ -58,38 +58,17 @@ sink = S.sink @_ @Label @Decl
 re :: RE Label
 re = Dot (Star $ Atom P) $ Atom VAR
 
+-- Expression for Explicit imports
+reExplicit :: RE Label
+reExplicit = Dot (Star $ Atom P) $ (Star $ Atom ExplicitI)
+
+-- Expression for Wildcard imports
+reWildcard :: RE Label
+reWildcard = Dot (Star $ Atom P) $ (Star $ Atom WildcardI)
+
 -- Path order based on length
 pShortest :: PathOrder Label Decl
 pShortest p1 p2 = lenRPath p1 < lenRPath p2
-
--- Path order based on Ministatix priorities.
--- pStatix :: PathOrder Label Decl
--- pStatix p1 p2 = label == LT || label == EQ
---   where
---     label = pStatixHelper p1 p2
-
--- pStatixHelper :: ResolvedPath Label Decl -> ResolvedPath Label Decl -> Ordering
--- pStatixHelper (ResolvedPath p1 _ _) (ResolvedPath p2 _ _) = comparePaths (extractPath p1) (extractPath p2)
---   where
---     comparePaths [] [] = EQ
---     comparePaths (_:_) [] = GT
---     comparePaths [] (_:_) = LT
---     comparePaths (x:xs) (y:ys) = case compareLabel x y of
---       Just r -> r
---       Nothing -> comparePaths xs ys
---     -- compareLabel MOD P = Just LT
---     -- compareLabel P MOD = Just GT
---     -- compareLabel MOD I = Just LT
---     -- compareLabel I MOD = Just GT
---     compareLabel VAR P = Just LT
---     compareLabel P VAR = Just GT
---     compareLabel VAR I = Just LT
---     compareLabel I VAR = Just GT
---     compareLabel I P = Just LT
---     compareLabel P I = Just GT
---     compareLabel _ _ = Nothing
---     extractPath (Start _) = []
---     extractPath (Step p l _) = extractPath p ++ [l]
 
 -- Match declaration with particular name
 matchDecl :: String -> Decl -> Bool
@@ -171,13 +150,13 @@ tcScDecl (ScObject name defs) s = do
   -- type check declarations 
   mapM_ (`tcScDecl` s) defs
   return (ObjT name)
-tcScDecl (ScExplicitImport imp) s = do
+tcScDecl (ScExplicitImport imp sImp) s = do
     ds <- query s re pShortest (matchDecl imp) <&> map projTy
     case ds of
         [] -> err $ "Imported module not found: " ++ imp
         [t] -> return t
         _ -> err "Multiple matching imports found" 
-tcScDecl (ScWildcardImport wildcard) s = do
+tcScDecl (ScWildcardImport wildcard sImp) s = do
     ds <- query s re pShortest (matchDecl wildcard) <&> map projTy
     case ds of
         [] -> err "No matching wildcard imports found"
@@ -204,8 +183,10 @@ buildSG (ScObject name defs) s = do
   edge sObjDef P s
   -- construct all the associated scopes of the object
   mapM_ (`buildSG` sObjDef) defs
--- buildSG (ScExplicitImport imp) s = 
--- buildSG (ScWildcardImport wildcard) s =  
+buildSG (ScExplicitImport imp sImp) s = do
+  edge sImp ExplicitI s
+buildSG (ScWildcardImport wildcard sImp) s = do
+  edge sImp WildcardI s 
 
 
 -- Tie it all together
