@@ -4,7 +4,7 @@ import Test.HUnit
 
 import Data.Either (isRight)
 import ATermParser
-import TypeChecker (runTC,  Label, Decl, runTCDecl)
+import TypeChecker (runTC,  Label, Decl, runTCDecl, runTCAll)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
@@ -17,11 +17,15 @@ import Debug.Trace (trace)
 runTCTest :: ScExp -> IO (Type, Graph Label Decl) 
 runTCTest = either assertFailure return . runTC
 
+runTCTestProg :: ScProg -> IO (Graph Label Decl) 
+runTCTestProg = either assertFailure return . runTCAll
+
 runTCFail :: ScExp -> IO String
 runTCFail e = either return (const $ assertFailure "Expected exception, got none") $ runTC e
 
 runTCTestObj :: ScDecl -> IO (Type, Graph Label Decl) 
 runTCTestObj = either assertFailure return . runTCDecl
+
 -- Define your test cases like the following
 test1 :: IO ()
 test1 = do
@@ -42,19 +46,36 @@ test2 = do
 --   }
 -- }
 
+-- test3 :: IO ()
+-- test3 = do
+--   t <- runTCTestObj $ ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2) ]
+--   print $ snd t
+--   assertEqual "Incorrect type" (ObjT "MyObj") $ fst t
+
+-- test4 :: IO ()
+-- test4 = do
+--   t <- runTCTestObj $ ScObject "MyObj"
+--     [ ScVal (ScParam "x" NumT) (ScNum 42) , 
+--     ScDef "m" (FunT NumT NumT) (ScFun (ScParam "y" NumT) (ScPlus (ScId "y") (ScNum 2)))]
+--   assertEqual "Incorrect type" (ObjT "MyObj") $ fst 
 
 test3 :: IO ()
 test3 = do
-  t <- runTCTestObj $ ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2) ]
-  assertEqual "Incorrect type" (ObjT "MyObj") $ fst t
-  
+  intentionalBehaviour "Type checks" True $! runTCAll [ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2) ]]
+
+test5 :: IO ()
+test5 = do
+  intentionalBehaviour "Type checks" False $! runTCAll [ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2), 
+    ScVal (ScParam "x" NumT) (ScNum 3)  ]]
 
 test4 :: IO ()
 test4 = do
-  t <- runTCTestObj $ ScObject "MyObj"
-    [ ScVal (ScParam "x" NumT) (ScNum 42) , 
-    ScDef "m" (FunT NumT NumT) (ScFun (ScParam "y" NumT) (ScPlus (ScId "y") (ScNum 2)))]
-  assertEqual "Incorrect type" (ObjT "MyObj") $ fst t
+  intentionalBehaviour "Type checks" True $! runTCAll [ ScVal (ScParam "x" NumT) (ScNum 2) ]
+  
+intentionalBehaviour :: String -> Bool -> Either String (Graph Label Decl) -> IO ()
+intentionalBehaviour message expected res = do
+  trace "Intentional behaviour" $ print $! res
+  assertEqual message expected $ isRight res
 
 tests :: Test
 tests = TestList
@@ -62,8 +83,8 @@ tests = TestList
     [ "test1" ~: test1 
     , "test2" ~: test2 
     , "test3" ~: test3 
-    , "test4" ~: test4]
-    -- , "Parsing tests" ~: parser ]
+    , "test4" ~: test4 
+    , "test5" ~: test5]
 
 parser :: Test
 parser = TestList
@@ -105,10 +126,6 @@ runParseTest s = do
 
 
 main :: IO ()
--- main = do
---     result <- runTestTT tests
---     print result
---     if failures result > 0 then Exit.exitFailure else Exit.exitSuccess
 main = do
     result <- runTestTT tests
     print result

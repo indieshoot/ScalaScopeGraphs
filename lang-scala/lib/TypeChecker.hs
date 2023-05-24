@@ -10,9 +10,6 @@ import qualified Free.Scope as S (edge, new, sink)
 import Free.Error
 import ScSyntax
 import Debug.Trace
-import Free.Logic.Equals
-import qualified Data.Map as Map
-import Control.Applicative (Alternative(empty))
 
 
 ----------------------------
@@ -29,20 +26,23 @@ data Label
 
 data Decl
   = Decl String Type   -- Variable declaration
-  | Import String Sc -- Import declaration
+  | ExplicitImp String Sc -- Explicit Import declaration
+  | WildcardImp String Sc -- Wildcard Import declaration
   | ObjD String Sc -- Object declaration
   deriving (Eq)
 
 
 instance Show Decl where
   show (Decl x t) = x ++ " : " ++ show t
-  show (Import x s) = "Import" ++ x ++ " @ " ++ show s
+  show (ExplicitImp x s) = "Explicit Import" ++ x ++ " @ " ++ show s
+  show (WildcardImp x s) = "Wildcard Import" ++ x ++ " @ " ++ show s
   show (ObjD x s) = "Object" ++ x ++ "@" ++ show s
 
 projTy :: Decl -> Type
 projTy (Decl _ t) = t
 projTy (ObjD _ _) = error "Cannot project an object"
-projTy (Import _ _) = error "Cannot project a module"
+projTy (ExplicitImp _ _) = error "Cannot project an import."
+projTy (WildcardImp _ _) = error "Cannot project an import."
 
 -- Scope Graph Library Convenience
 edge :: Scope Sc Label Decl < f => Sc -> Label -> Sc -> Free f ()
@@ -57,6 +57,11 @@ sink = S.sink @_ @Label @Decl
 -- Regular expression P*D
 re :: RE Label
 re = Dot (Star $ Atom P) $ Atom VAR
+
+-- Regular expression for variable declarations
+re' :: RE Label
+re' = Dot (Star (Pipe (Atom P) (Atom OBJ))) (Atom VAR)
+
 
 -- Expression for Explicit imports
 reExplicit :: RE Label
@@ -73,7 +78,8 @@ pShortest p1 p2 = lenRPath p1 < lenRPath p2
 -- Match declaration with particular name
 matchDecl :: String -> Decl -> Bool
 matchDecl x (Decl x' _) = x == x'
-matchDecl x (Import x' _) = x == x'
+matchDecl x (ExplicitImp x' _) = x == x'
+matchDecl x (WildcardImp x' _) = x == x'
 matchDecl x (ObjD x' _) = x == x'
 
 ------------------
@@ -84,20 +90,26 @@ matchDecl x (ObjD x' _) = x == x'
 tcAll :: ( Functor f, Error String < f, Scope Sc Label Decl < f)
    => ScProg -> Sc -> Free f ()
 tcAll p s = do
+  -- Phase 1: allocate scopes
   mapM_ (`buildSG` s) p
+
+  -- Phase 2: type check declarations
   mapM_ (`tcScDecl` s) p
 
-
--- Function to type check scala expressions
-tcScExp :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScExp -> Sc -> Free f Type
+  -- Function to type check Scala expressions
+tcScExp ::
+  (Functor f, Error String < f, Scope Sc Label Decl < f) =>
+  ScExp ->
+  Sc ->
+  Free f Type
 tcScExp (ScNum _) _ = return NumT
 tcScExp (ScBool _) _ = return BoolT
 tcScExp (ScId x) s = do
-  ds <- query s re pShortest (matchDecl x) <&> map projTy 
+  ds <- query s re pShortest (matchDecl x) <&> map projTy
   case ds of
-    []  -> err "No matching declarations found"
+    [] -> err "No matching declarations found"
     [t] -> return t
-    _   -> err "BUG: Multiple declarations found" -- cannot happen for STLC
+    _ -> err "BUG: Multiple declarations found" -- cannot happen for STLC
 tcScExp (ScPlus l r) s = tcBinOp l r NumT NumT s
 tcScExp (ScIf cond thenBranch elseBranch) s = do
   ifBool <- tcScExp cond s
@@ -105,7 +117,8 @@ tcScExp (ScIf cond thenBranch elseBranch) s = do
   falseBranch <- tcScExp elseBranch s
   if ifBool == BoolT then
     if trueBranch == falseBranch then return trueBranch else err "Branches need the same output type."
-  else err "There needs to be a boolean condition."
+  else
+    err "There needs to be a boolean condition."
 tcScExp (ScFun (ScParam str strType) body) s = do
   let newTy = strType
   s' <- new
@@ -117,9 +130,10 @@ tcScExp (ScApp func app) s = do
   f' <- tcScExp func s
   a' <- tcScExp app s
   case f' of
-    (FunT t t') | t == a' -> return t'
-    (FunT t _) -> err $ "Expected argument of type '" ++ show t ++ "' got '" ++ show a' ++ "'"
-    _ -> err "Not function."
+    FunT t t' | t == a' -> return t'
+    FunT t _ -> err $ "Expected argument of type '" ++ show t ++ "' got '" ++ show a' ++ "'"
+    _ -> err "Not a function."
+
 
 -- type check binary operators
 tcBinOp :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScExp -> ScExp -> Type -> Type -> Sc -> Free f Type
@@ -135,7 +149,11 @@ tcBinOp l r inp out s = do
 tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Type
 tcScDecl (ScVal (ScParam name t) expr) s = do
   x <- query s re pShortest (matchDecl name)
-  if length x /= 1  then err "variable is defined more than once." 
+  let xLength = length x
+  trace ("\nLength of query: " ++ show xLength) $ return ()  -- Print the length
+  -- Check if the variable exists or if it declrared more than once.
+  if length x < 1  then err "The variable is not defined." 
+  else if length x > 1 then err "The variable is defined more than once."
   else do
     t' <- tcScExp expr s -- need to check
     if t == t' then return (ValT name) else err "Type missmatch in val."
@@ -184,9 +202,15 @@ buildSG (ScObject name defs) s = do
   -- construct all the associated scopes of the object
   mapM_ (`buildSG` sObjDef) defs
 buildSG (ScExplicitImport imp sImp) s = do
-  edge sImp ExplicitI s
+   -- Create a new sink in the importing scope
+    sink sImp ExplicitI $ ExplicitImp imp sImp
+    -- edge sImp ExplicitI s
 buildSG (ScWildcardImport wildcard sImp) s = do
-  edge sImp WildcardI s 
+   -- Create a new sink in the importing scope
+    -- sink sImp VAR $ Import wildcard sImp
+    -- edge sImp WildcardI s 
+    edge sImp WildcardI s
+    sink sImp WildcardI $ WildcardImp wildcard sImp -- Create specialized sink for wildcard imports
 
 
 -- Tie it all together
@@ -210,11 +234,9 @@ runTCAll prog =
                 + Nop )
                 ()
         ) emptyGraph
-    in case tuple of 
+  in case tuple of 
       Left err -> Left err
       Right ((), sg) -> Right sg
-
-
 
 -- tcScExp (ScObj s) _ = return $ ObjT s
     -- case op of 

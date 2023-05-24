@@ -15,6 +15,7 @@ data Type
   | BoolT
   | ValT String
   -- | VarT String
+  | ImpT String
   | FunT Type Type
   | ObjT String
   | Unit -- unit type for void methods
