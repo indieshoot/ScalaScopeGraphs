@@ -4,27 +4,127 @@ import Test.HUnit
 
 import Data.Either (isRight)
 import ATermParser
-import TypeChecker (runTC,  Label, Decl, runTCDecl, runTCAll)
+import TypeChecker (Label, Decl, runTC, runTCAll, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
 import Debug.Trace (trace)
 
 
--- runTCTest :: ScProg -> IO (Ty, Graph Label Decl) 
--- runTCTest = either assertFailure return . runTC
+-- runTCTestObj :: ScDecl -> IO (Type, Graph Label Decl) 
+-- runTCTestObj = either assertFailure return . runTCDecl
 
 runTCTest :: ScExp -> IO (Type, Graph Label Decl) 
 runTCTest = either assertFailure return . runTC
 
-runTCTestProg :: ScProg -> IO (Graph Label Decl) 
-runTCTestProg = either assertFailure return . runTCAll
-
 runTCFail :: ScExp -> IO String
 runTCFail e = either return (const $ assertFailure "Expected exception, got none") $ runTC e
 
-runTCTestObj :: ScDecl -> IO (Type, Graph Label Decl) 
-runTCTestObj = either assertFailure return . runTCDecl
+runTCTestProg :: ScProg -> IO (Graph Label Decl) 
+runTCTestProg = either assertFailure return . runTCAll
+
+runTCPh :: ScProg -> IO ([[Type]], Graph Label Decl) 
+runTCPh = either assertFailure return . runTCPhased
+
+
+-- object A {
+--   import B.y;
+--   val x : Int = y
+-- }
+-- object B {
+--     val y : Int = 2
+--   }
+
+testEImp :: IO ()
+testEImp = do
+  t <- runTCPh [ScObject "A" 
+                    [ ScImport (ScEImp "B" "y"),
+                      ScVal (ScParam "x" NumT) (ScId "y")
+                    ] , 
+                ScObject "B" 
+                    [ScVal (ScParam "y" NumT) (ScNum 2)] 
+                 ]
+  assertEqual "Incorrect types" [[NumT, NumT]] $ fst t 
+
+
+-- object A {
+--   val y : Bool = True
+--   val x : Int = 42
+-- }
+-- object B {
+--     import A._;
+--     val y : Int = x
+--   }
+
+testWImp :: IO ()
+testWImp = do
+  t <- runTCPh [ScObject "A" 
+                    [ ScVal (ScParam "y" BoolT) (ScBool True) , 
+                      ScVal (ScParam "x" NumT) (ScNum 5) 
+                    ] , 
+                ScObject "B" 
+                    [ ScImport (ScWImp "A"),
+                      ScVal (ScParam "y" NumT) (ScId "x")
+                    ] 
+                 ]
+  assertEqual "Incorrect types" [[BoolT, NumT, NumT]] $ fst t 
+
+
+-- object A {
+--   import B._;
+--   val x : Int = 5
+-- }
+-- object B {
+--     import A.x;
+--     val y : Int = x
+--   }
+
+testDoubleImports :: IO ()
+testDoubleImports = do
+  t <- runTCPh [ScObject "A" 
+                    [ ScImport (ScWImp "B"),
+                      ScVal (ScParam "x" NumT) (ScNum 5) 
+                    ] , 
+                ScObject "B" 
+                    [ ScImport (ScEImp "A" "x"),  
+                      ScVal (ScParam "y" NumT) (ScId "x")
+                    ] 
+                 ]
+  assertEqual "Incorrect types" [[NumT, NumT]] $ fst t 
+
+
+  -- object A {
+  --   val x : Int = 21
+  -- }
+  
+  -- object B {
+  --   val x : Int = 42
+  -- }
+
+  -- object C {
+  --   import B._
+  --   import A.x
+
+  --   val y : Int = x -- queries to A == 21
+  -- }
+
+testNameClash :: IO ()
+testNameClash = do
+  t <- runTCPh [ScObject "A" 
+                    [
+                      ScVal (ScParam "x" NumT) (ScNum 21) 
+                    ] , 
+                ScObject "B" 
+                    [ 
+                      ScVal (ScParam "y" NumT) (ScNum 42)
+                    ] ,
+                ScObject "C" 
+                    [ ScImport (ScWImp "B"), 
+                      ScImport (ScEImp "A" "x"),  
+                      ScVal (ScParam "y" NumT) (ScId "x")
+                    ] 
+               ]
+  assertEqual "Incorrect types" [[NumT, NumT, NumT]] $ fst t 
 
 -- Define your test cases like the following
 test1 :: IO ()
@@ -46,83 +146,59 @@ test2 = do
 --   }
 -- }
 
--- test3 :: IO ()
--- test3 = do
---   t <- runTCTestObj $ ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2) ]
---   print $ snd t
---   assertEqual "Incorrect type" (ObjT "MyObj") $ fst t
-
--- test4 :: IO ()
--- test4 = do
---   t <- runTCTestObj $ ScObject "MyObj"
---     [ ScVal (ScParam "x" NumT) (ScNum 42) , 
---     ScDef "m" (FunT NumT NumT) (ScFun (ScParam "y" NumT) (ScPlus (ScId "y") (ScNum 2)))]
---   assertEqual "Incorrect type" (ObjT "MyObj") $ fst 
-
 test3 :: IO ()
 test3 = do
-  intentionalBehaviour "Type checks" True $! runTCAll [ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2) ]]
-
-test5 :: IO ()
-test5 = do
-  intentionalBehaviour "Type checks" False $! runTCAll [ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2), 
-    ScVal (ScParam "x" NumT) (ScNum 3)  ]]
+  testTypeCheck "Type checks" True $! runTCAll [ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2) ]]
 
 test4 :: IO ()
 test4 = do
-  intentionalBehaviour "Type checks" True $! runTCAll [ ScVal (ScParam "x" NumT) (ScNum 2) ]
+  testTypeCheck "Type checks" True $! runTCAll [ ScVal (ScParam "x" NumT) (ScNum 2) ]
+
+test5 :: IO ()
+test5 = do
+  testTypeCheck "Type checks" False $! runTCAll [ScObject "MyObj" [ ScVal (ScParam "x" NumT) (ScNum 2), 
+    ScVal (ScParam "x" NumT) (ScNum 3)  ]]
+
+
+-- object A {
+--   val x : Int = 5
+--   object B {
+--     val y : Int = x
+--   }
+-- }
+
+test6 :: IO ()
+test6 = do
+  testTypeCheck "Type checks" True $! runTCAll [ScObject "A" 
+                                                [ ScVal (ScParam "x" NumT) (ScNum 5), 
+                                                  ScObject "B" 
+                                                    [ ScVal (ScParam "y" NumT) (ScId "x")] 
+                                                ]
+                                               ]
+
   
-intentionalBehaviour :: String -> Bool -> Either String (Graph Label Decl) -> IO ()
-intentionalBehaviour message expected res = do
-  trace "Intentional behaviour" $ print $! res
+testTypeCheck :: String -> Bool -> Either String (Graph Label Decl) -> IO ()
+testTypeCheck message expected res = do
+  trace "Intentional behaviour" $ print' $! res
   assertEqual message expected $ isRight res
+  
+print' :: Either String (Graph Label Decl) -> IO ()
+print' (Right g) = print g
+print' (Left e) = putStrLn $ "Received error message: " ++ e
 
 tests :: Test
 tests = TestList
     -- Add your test cases to this list
     [ "test1" ~: test1 
     , "test2" ~: test2 
-    , "test3" ~: test3 
-    , "test4" ~: test4 
-    , "test5" ~: test5]
-
-parser :: Test
-parser = TestList
-  [ "./aterm-res/scala/simple/empty.aterm" ~: testP1 
-  , "./aterm-res/scala/simple/missing-def.no.aterm" ~: testP2 
-  , "./aterm-res/scala/simple/param-shadows-def.aterm" ~: testP3 
-  , "./aterm-res/scala/simple/param-shadows-def.no.aterm" ~: testP4 
-  , "./aterm-res/scala/simple/rec-defs.aterm" ~: testP5 
-  , "./aterm-res/scala/simple/seq-defs.aterm" ~: testP6
-  , "./aterm-res/scala/simple/type-mismatch.no.aterm" ~: testP7 ]
-
-testP1 :: IO ()
-testP1 = runParseTest "./aterm-res/scala/empty.aterm"
-
-testP2 :: IO ()
-testP2 = runParseTest "./aterm-res/scala/simple/missing-def.no.aterm"
-
-testP3 :: IO ()
-testP3 = runParseTest "./aterm-res/scala/simple/param-shadows-def.aterm"
-
-testP4 :: IO ()
-testP4 = runParseTest "./aterm-res/scala/simple/param-shadows-def.no.aterm"
-
-testP5 :: IO ()
-testP5 = runParseTest "./aterm-res/scala/simple/rec-defs.aterm"
-
-testP6 :: IO ()
-testP6 = runParseTest "./aterm-res/scala/simple/seq-defs.aterm"
-
-testP7 :: IO ()
-testP7 = runParseTest "./aterm-res/scala/simple/type-mismatch.no.aterm"
-
-
-runParseTest :: String -> IO ()
-runParseTest s = do
-  p <- parse s
-  print p
-  assertEqual "It parses" (isRight p) True
+    , "testEImp" ~: testEImp
+    , "testWImp" ~: testWImp
+    , "testDoubleImport" ~: testDoubleImports
+    , "testNameClash" ~: testNameClash
+    ]
+    -- , "test3" ~: test3 
+    -- , "test4" ~: test4 
+    -- , "test5" ~: test5]
 
 
 main :: IO ()
@@ -130,3 +206,4 @@ main = do
     result <- runTestTT tests
     print result
     if errors result > 0 || failures result > 0 then Exit.exitFailure else Exit.exitSuccess
+

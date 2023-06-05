@@ -4,26 +4,20 @@
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
 module ScSyntax where
-
-import Free
-
-import Free.Scope hiding (edge, new, sink)
-import qualified Free.Scope as S (edge, new, sink)
+import Free.Scope (Sc)
 
 data Type
   = NumT
   | BoolT
   | ValT String
-  -- | VarT String
-  | ImpT String
   | FunT Type Type
   | ObjT String
-  | Unit -- unit type for void methods
+  | Unit        -- unit type for void methods
+  | ImpT String -- Import type
   deriving Eq
 
 instance Show Type where
   show (ValT i) = "α" ++ show i
-  -- show (VarT i) = "α" ++ show i
   show NumT = "num"
   show BoolT = "bool"
   show (ObjT str) = "Object " ++ str  
@@ -32,19 +26,50 @@ instance Show Type where
 
 
 -- Inspiration: https://www.scala-lang.org/files/archive/spec/2.13/13-syntax-summary.html
-type ScProg = [ScDecl]
 
--- ScDecl is an algebraic data type that can take on one of three forms:
+type ScProg = [ScDecl]
+type ScProg' = [(ScDecl, Sc)]
+
+-- ScDecl is an algebraic data type that can take on one of the forms:
 data ScDecl
   = ScVal ScParam ScExp 
   | ScDef String Type ScExp
   | ScObject String [ScDecl] -- object MyObj { ... }
-  | ScExplicitImport String Sc -- nested later?
-  | ScWildcardImport String Sc
-  -- | ScTrait String [ScParam] [ScDecl] -- similar to interfaces in Java
+  | ScImport Imp
   deriving (Eq, Show)
 
 data ScParam = ScParam String Type deriving (Eq, Show)
+
+type ObjName = String
+type VarName = String
+
+data Imp 
+  = ScEImp ObjName VarName
+  | ScWImp ObjName
+  deriving (Eq, Show)
+
+-- Given an import string, extract the imported names
+extractImportedNames :: String -> [String]
+extractImportedNames importStr = wordsDot (=='.') (drop 1 importStr) -- Assumes importStr is of the form "import A.B.C.x"
+
+wordsDot     :: (Char -> Bool) -> String -> [String]
+wordsDot p s =  case dropWhile p s of
+                      "" -> []
+                      s' -> w : wordsDot p s''
+                            where (w, s'') = break p s'
+
+
+
+-- Subprograms in Scala examples are made of object trees.
+data ObjStructure
+    = SubProg ObjName [Imp] [ObjStructure] [ScDecl]
+    deriving (Eq, Show)
+
+data ObjScope
+  = SubProgSc ObjName [Imp] [ObjScope] [ScDecl] Sc
+  deriving (Eq, Show)
+
+type ObjectRef = (String, Sc)
 
 data ScExp 
   = ScId String
@@ -52,11 +77,13 @@ data ScExp
   | ScBool Bool 
   | ScPlus ScExp ScExp
   | ScIf ScExp ScExp ScExp
-  | ScFun ScParam ScExp -- [ScParam] later - ScFun String [ScParam] [ScExp]
-  | ScApp ScExp ScExp -- [ScExp] later
-  -- | ScObj String -- MyObj
-  -- | ScRecord [(String, ScExp)] -- record creation = case class in Scala
+  | ScFun ScParam ScExp    -- [ScParam] later - ScFun String [ScParam] [ScExp]
+  | ScApp ScExp ScExp      -- [ScExp] later
   deriving (Eq, Show)
+
+
+example :: ScExp
+example = ScNum 1
  
 
 -- data ScIdent
@@ -79,9 +106,6 @@ data ScExp
 --   | ScEquals
 --   | ScLessThan
 --   deriving (Eq, Show)
-
-example :: ScExp
-example = ScNum 1
 
 
 -- INFERENCE -- 
