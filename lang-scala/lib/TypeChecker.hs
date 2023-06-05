@@ -192,13 +192,8 @@ tcScDecl (ScDef name t expr) s = do
 -- Step 3: Declare all variables.
 -- Step 4: Type-checking all initialization expressions
 
-
--- Step 1: allocate objects scopes
-step1 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Sc]
-step1 p s = mapM scopeObj p
-  where
-    scopeObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Free f Sc
-    scopeObj (ScObject name _) = do 
+scopeObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Sc
+scopeObj (ScObject name _) s = do 
       -- Create new scope for the object
       sObjDef <- new
       -- Add edge between object scope and parent scope.
@@ -206,42 +201,44 @@ step1 p s = mapM scopeObj p
       -- Add object declaration
       sink s OBJ $ ObjDecl name sObjDef
       return sObjDef
-
--- Step 2: add import edges and copy imported names to object graph. 
-step2 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
-step2 = mapM_ impRes
-  where
-    -- Import resolution within objects
-    impRes :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
-    impRes (ScImport (ScEImp objName varName), s) = do 
-      impSc <- queryObj s objName
-      case impSc of
-        Just s' -> do
-            ds' <- query s' re pShortest (matchDecl varName) <&> map projTy
-            case ds' of
-              [] -> err "No matching declarations found"
-              [t] -> do
+   
+impRes :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
+impRes (ScImport (ScEImp objName varName), s) = do 
+        impSc <- queryObj s objName
+        case impSc of
+          Just s' -> do
+              ds' <- query s' re pShortest (matchDecl varName) <&> map projTy
+              case ds' of
+                [] -> err "No matching declarations found"
+                [t] -> do
                 -- copy name in our scope
-                sink s EI $ Decl varName t
-              _ -> err "BUG: Multiple declarations found" -- cannot happen for STLC
-    impRes (ScImport (ScWImp objName), s) = do 
+                  sink s EI $ Decl varName t
+                _ -> err "BUG: Multiple declarations found - import res"
+          Nothing -> err "Import scope not found" 
+impRes (ScImport (ScWImp objName), s) = do 
       impSc <- queryObj s objName
       case impSc of
         Just s' -> do
           -- Draw an edge from s to the imported s'.
           edge s WI s' 
         _ -> err $ "Object " ++ objName ++ "'does not exist."
-    impRes _ = err "Not an import."
+impRes _ = err "Not an import."
 
+-- Step 1: allocate objects scopes
+step1 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Sc]
+step1 p s = mapM (`scopeObj` s) p
+
+-- Step 2: add import edges and copy imported names to object graph. 
+step2 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
+step2 = mapM_ impRes
 
 -- Step 3: type check
 step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [[Type]]
 step3 p s = do
-  -- Construct the graph, handled by monad.
   objSc <- step1 p s
   let scopedProg = zip p objSc
   _ <- step2 scopedProg
-  -- Recursively type check
+  -- Type check the rest
   mapM tcObj scopedProg
   where
     tcObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Type]
@@ -257,7 +254,6 @@ runTCPhased p = un
 -----------------------------------------SECOND IDEA--------------------------------------------------------
 
 -- Build the scope graph
--- Need to return the scope graph for further processing -> subprogram 
 buildSG :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f ()
 -- values
 buildSG (ScVal (ScParam name t) _) s = do
@@ -305,45 +301,45 @@ tcAll p s = do
 
 
 -- Build object hierarchy
+-- Need to return the scope graph for further processing -> subprogram 
 objHierarchy :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ObjStructure -> Sc -> Free f ObjScope
-objHierarchy (SubProg objName imports children decls) s = do
-  -- Create a new scope for this module, it can be nested.
+objHierarchy (SubProg objName i rest defs) s = do
+  -- New object scope
   s' <- new
   edge s' P s
-  -- Resister the module with its parent scope.
+  -- Create object declaration
   sink s OBJ $ ObjDecl objName s'
-  -- Now we recursively create and annotate all the children.
-  children' <- mapM (`objHierarchy` s') children
-  -- Return the annotated tree with the scope.
-  return $ SubProgSc objName imports children' decls s'
+  -- Recursive case
+  rest' <- mapM (`objHierarchy` s') rest
+  -- Return the subprogram with the scope.
+  return $ SubProgSc objName i rest' defs s'
 
 
 -- method for import resolution here
 
 -- Create all declarations.
-addSinks :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ObjScope -> Free f [(Sc, ScExp)]
-addSinks (SubProgSc _ _ children decls s) = do
-  curr <- catMaybes <$> mapM (make s) decls
-  rest <- concat <$> mapM addSinks children
-  return $ curr ++ rest
+addSinks :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ObjScope -> Free f [(ScExp, Sc)]
+addSinks (SubProgSc _ _ rest defs s) = do
+  x  <- mapM (tcDef s) defs
+  xs <- concat <$> mapM addSinks rest
+  return $ x ++ xs
   where
-    make s (ScVal (ScParam name t) e) = do
-      tcScExp e s 
+    tcDef s (ScVal (ScParam name t) expr) = do
+      tcScExp expr s 
       sink s VAR $ Decl name t
-      return $ Just (s, e)
-    make s (ScDef name t expr) = do
+      return (expr, s)
+    tcDef s (ScDef name t expr)  = do
       tcScExp expr s
       s' <- new
       edge s' P s
       sink s' VAR $ Decl name t
-      return $ Just (s, expr)
-    make _ _ = return Nothing
+      return (expr, s)
 
 -- runTcObjects :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f ()
 -- runTcObjects e g = do
 --   -- subProgs <- createObjHierarchy
---   -- decls <- addSinks annotatedModTree
---   mapM_ (\(g, e) -> tcScExp e g ) decls
+--   -- defs <- addSinks subProgs
+--   mapM_ (\(g, e) -> tcScExp e g ) defs
 
 
 ----------------------------------------RUN METHODS---------------------------------------------------
