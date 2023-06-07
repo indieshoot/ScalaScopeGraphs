@@ -114,7 +114,7 @@ tcScExp (ScBool _) _ = return BoolT
 tcScExp (ScId x) s = do
   ds <- query s re pShortest (matchDecl x) <&> map projTy
   case ds of
-    [] -> err "No matching declarations found"
+    [] -> err "No matching declarations found - expression"
     [t] -> return t
     _ -> err "BUG: Multiple declarations found" -- cannot happen for STLC
 tcScExp (ScPlus l r) s = tcBinOp l r NumT NumT s
@@ -154,7 +154,7 @@ tcBinOp l r inp out s = do
 
 
 -- type check declarations
-tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Type
+tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f (Maybe Type)
 tcScDecl (ScVal (ScParam name t) expr) s = do
   -- x <- query s re pShortest (matchDecl name)
   -- let xLength = length x
@@ -166,21 +166,18 @@ tcScDecl (ScVal (ScParam name t) expr) s = do
     t' <- tcScExp expr s -- need to check
     -- Add the declaration to the current scope. Do NOT start a new scope.
     sink s VAR $ Decl name t
-    if t == t' then return (ValT name) else err "Type missmatch in val."
+    if t == t' then return (Just t') else err "Type missmatch in val."
 tcScDecl (ScDef name t expr) s = do
   x <- query s re pShortest (matchDecl name)
   if length x /= 1  then err "variable is defined more than once." 
   else do
     t' <- tcScExp expr s -- need to check
-    if t == t' then return (ValT name) else err "Type missmatch in definition."
-    return t
+    if t == t' then return t' else err "Type missmatch in definition."
+    return (Just t)
 
--- I am not if I still need to deal with objects here
+tcScDecl (ScObject name _) _ = return Nothing
+tcScDecl (ScImport _) _ = return Nothing
 
--- tcScDecl (ScObject name defs) s = do
---   -- type check declarations 
---   mapM_ (`tcScDecl` s) defs
---   return (ObjT name)
 
 --------------------------- FIRST IDEA --------------------------------------------
 -- MAIN PHASES
@@ -192,6 +189,10 @@ tcScDecl (ScDef name t expr) s = do
 -- Step 3: Declare all variables.
 -- Step 4: Type-checking all initialization expressions
 
+-- Step 1: allocate objects scopes
+step1 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Sc]
+step1 p s = mapM (`scopeObj` s) p
+
 scopeObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Sc
 scopeObj (ScObject name _) s = do 
       -- Create new scope for the object
@@ -201,7 +202,11 @@ scopeObj (ScObject name _) s = do
       -- Add object declaration
       sink s OBJ $ ObjDecl name sObjDef
       return sObjDef
-   
+
+-- Step 2: add import edges and copy imported names to object graph. 
+step2 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
+step2 = mapM_ impRes
+
 impRes :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
 impRes (ScImport (ScEImp objName varName), s) = do 
         impSc <- queryObj s objName
@@ -209,7 +214,7 @@ impRes (ScImport (ScEImp objName varName), s) = do
           Just s' -> do
               ds' <- query s' re pShortest (matchDecl varName) <&> map projTy
               case ds' of
-                [] -> err "No matching declarations found"
+                [] -> err "No matching declarations found - imp"
                 [t] -> do
                 -- copy name in our scope
                   sink s EI $ Decl varName t
@@ -222,30 +227,24 @@ impRes (ScImport (ScWImp objName), s) = do
           -- Draw an edge from s to the imported s'.
           edge s WI s' 
         _ -> err $ "Object " ++ objName ++ "'does not exist."
-impRes _ = err "Not an import."
-
--- Step 1: allocate objects scopes
-step1 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Sc]
-step1 p s = mapM (`scopeObj` s) p
-
--- Step 2: add import edges and copy imported names to object graph. 
-step2 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
-step2 = mapM_ impRes
+impRes _ = return ()
 
 -- Step 3: type check
-step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [[Type]]
+step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Type]
 step3 p s = do
   objSc <- step1 p s
   let scopedProg = zip p objSc
   _ <- step2 scopedProg
   -- Type check the rest
-  mapM tcObj scopedProg
+  -- concat <$> mapM tcObj scopedProg
+  result <- concat <$> mapM tcObj scopedProg
+  return (catMaybes result) -- Filter out 'Nothing' values
   where
-    tcObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Type]
-    tcObj (ScObject _ es, g) = mapM (`tcScDecl` g) es
+    tcObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Maybe Type]
+    tcObj (ScObject _ defs, g) = mapM (`tcScDecl` g) defs
   
 
-runTCPhased :: ScProg -> Either String ([[Type]], Graph Label Decl)
+runTCPhased :: ScProg -> Either String ([Type], Graph Label Decl)
 runTCPhased p = un
         $ handle hErr
         $ handle_ hScope (step3 p 0) emptyGraph
@@ -320,7 +319,7 @@ objHierarchy (SubProg objName i rest defs) s = do
 -- Create all declarations.
 addSinks :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ObjScope -> Free f [(ScExp, Sc)]
 addSinks (SubProgSc _ _ rest defs s) = do
-  x  <- mapM (tcDef s) defs
+  x <- mapM (tcDef s) defs
   xs <- concat <$> mapM addSinks rest
   return $ x ++ xs
   where

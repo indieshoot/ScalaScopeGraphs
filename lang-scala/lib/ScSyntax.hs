@@ -13,7 +13,7 @@ data Type
   | FunT Type Type
   | ObjT String
   | Unit        -- unit type for void methods
-  | ImpT String -- Import type
+  | ImpT -- Import type
   deriving Eq
 
 instance Show Type where

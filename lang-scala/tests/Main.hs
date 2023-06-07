@@ -11,9 +11,6 @@ import ScSyntax
 import Debug.Trace (trace)
 
 
--- runTCTestObj :: ScDecl -> IO (Type, Graph Label Decl) 
--- runTCTestObj = either assertFailure return . runTCDecl
-
 runTCTest :: ScExp -> IO (Type, Graph Label Decl) 
 runTCTest = either assertFailure return . runTC
 
@@ -23,28 +20,41 @@ runTCFail e = either return (const $ assertFailure "Expected exception, got none
 runTCTestProg :: ScProg -> IO (Graph Label Decl) 
 runTCTestProg = either assertFailure return . runTCAll
 
-runTCPh :: ScProg -> IO ([[Type]], Graph Label Decl) 
+runTCPh :: ScProg -> IO ([Type], Graph Label Decl) 
 runTCPh = either assertFailure return . runTCPhased
 
 
+-- Define your test cases like the following
+test1 :: IO ()
+test1 = do
+  t <- runTCTest $ ScNum 1
+  assertEqual "Incorrect type: not a number" NumT $ fst t
+
+test2 :: IO ()
+test2 = do
+  t <- runTCTest $ ScBool True
+  assertEqual "Incorrect type: not a boolean" BoolT $ fst t
+
 -- object A {
---   import B.y;
---   val x : Int = y
+--   val x : Int = 3
 -- }
 -- object B {
---     val y : Int = 2
+--   import A.x;
+--   val y : Int = x
 --   }
 
 testEImp :: IO ()
 testEImp = do
   t <- runTCPh [ScObject "A" 
-                    [ ScImport (ScEImp "B" "y"),
-                      ScVal (ScParam "x" NumT) (ScId "y")
+                    [ 
+                      ScVal (ScParam "x" NumT) (ScNum 3)
+                      -- ScVal (ScParam "x" NumT) (ScId "y")
                     ] , 
                 ScObject "B" 
-                    [ScVal (ScParam "y" NumT) (ScNum 2)] 
+                    [ ScImport (ScEImp "A" "x"),
+                      ScVal (ScParam "y" NumT) (ScId "X")] 
                  ]
-  assertEqual "Incorrect types" [[NumT, NumT]] $ fst t 
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t 
 
 
 -- object A {
@@ -59,7 +69,8 @@ testEImp = do
 testWImp :: IO ()
 testWImp = do
   t <- runTCPh [ScObject "A" 
-                    [ ScVal (ScParam "y" BoolT) (ScBool True) , 
+                    [ 
+                      -- ScVal (ScParam "y" BoolT) (ScBool True) , 
                       ScVal (ScParam "x" NumT) (ScNum 5) 
                     ] , 
                 ScObject "B" 
@@ -67,7 +78,7 @@ testWImp = do
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                  ]
-  assertEqual "Incorrect types" [[BoolT, NumT, NumT]] $ fst t 
+  assertEqual "Incorrect types" [BoolT, NumT, NumT] $ fst t 
 
 
 -- object A {
@@ -90,7 +101,7 @@ testDoubleImports = do
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                  ]
-  assertEqual "Incorrect types" [[NumT, NumT]] $ fst t 
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t 
 
 
   -- object A {
@@ -124,18 +135,30 @@ testNameClash = do
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                ]
-  assertEqual "Incorrect types" [[NumT, NumT, NumT]] $ fst t 
+  assertEqual "Incorrect types" [NumT, NumT, NumT] $ fst t 
 
--- Define your test cases like the following
-test1 :: IO ()
-test1 = do
-  t <- runTCTest $ ScNum 1
-  assertEqual "Incorrect type: not a number" NumT $ fst t
 
-test2 :: IO ()
-test2 = do
-  t <- runTCTest $ ScBool True
-  assertEqual "Incorrect type: not a boolean" BoolT $ fst t
+
+  
+testTypeCheck :: String -> Bool -> Either String (Graph Label Decl) -> IO ()
+testTypeCheck message expected res = do
+  trace "Intentional behaviour" $ print' $! res
+  assertEqual message expected $ isRight res
+  
+print' :: Either String (Graph Label Decl) -> IO ()
+print' (Right g) = print g
+print' (Left e) = putStrLn $ "Received error message: " ++ e
+
+tests :: Test
+tests = TestList
+    -- Add your test cases to this list
+    [ "test1" ~: test1 
+    , "test2" ~: test2 
+    , "testEImp" ~: testEImp
+    -- , "testWImp" ~: testWImp
+    -- , "testDoubleImport" ~: testDoubleImports
+    -- , "testNameClash" ~: testNameClash
+    ]
 
 
 -- object MyObj {
@@ -175,30 +198,6 @@ test6 = do
                                                     [ ScVal (ScParam "y" NumT) (ScId "x")] 
                                                 ]
                                                ]
-
-  
-testTypeCheck :: String -> Bool -> Either String (Graph Label Decl) -> IO ()
-testTypeCheck message expected res = do
-  trace "Intentional behaviour" $ print' $! res
-  assertEqual message expected $ isRight res
-  
-print' :: Either String (Graph Label Decl) -> IO ()
-print' (Right g) = print g
-print' (Left e) = putStrLn $ "Received error message: " ++ e
-
-tests :: Test
-tests = TestList
-    -- Add your test cases to this list
-    [ "test1" ~: test1 
-    , "test2" ~: test2 
-    , "testEImp" ~: testEImp
-    , "testWImp" ~: testWImp
-    , "testDoubleImport" ~: testDoubleImports
-    , "testNameClash" ~: testNameClash
-    ]
-    -- , "test3" ~: test3 
-    -- , "test4" ~: test4 
-    -- , "test5" ~: test5]
 
 
 main :: IO ()
