@@ -137,16 +137,98 @@ testNameClash = do
   print $ snd t
   assertEqual "Incorrect types" [NumT, BoolT, NumT] $ fst t 
 
+-- object A {
+--   def f: Int = g;
+--   def g: Int = f;
+-- };
+
+testMutualDefs :: IO ()
+testMutualDefs = do
+  t <- runTCPh [ScObject "A" []
+                    [
+                      ScVal (ScParam "x" NumT) (ScId "y"),
+                      ScVal (ScParam "y" NumT) (ScId "x") 
+                    ] 
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t 
+
+-- recursive-defs: pass
+-- object A {
+--   def f: Int = f;
+-- };
+
+testRecDefs :: IO ()
+testRecDefs = do
+  t <- runTCPh [ScObject "A" []
+                    [
+                      ScVal (ScParam "x" NumT) (ScId "x")
+                    ] 
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT] $ fst t 
+
+-- nested-val-defs:
+-- object O {
+--   val x : Int = 42;
+--   object P {
+--     val x : Int = 43;
+--   };
+-- };
+
+testNestedObj :: IO ()
+testNestedObj = do
+  t <- runTCPh [ScObject "O" []
+                    [
+                      ScVal (ScParam "x" NumT) (ScNum 42),
+                      ScObject "P" []
+                        [
+                          ScVal (ScParam "x" NumT) (ScNum 43)
+                        ]
+                    ] 
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, ObjT "P" [NumT]] $ fst t 
+
+-- qualified reference to value: make pass
+-- object A {
+--   object B {
+--     val x : Int = 42;
+--   };
+-- };
+
+-- object O {
+--   val x : Int = A.B.x;
+-- };
+
+testQualifiedRef :: IO ()
+testQualifiedRef = do
+  t <- runTCPh [ScObject "A" [ScWImp "B"]
+                    [ 
+                      ScObject "B" []
+                        [
+                          ScVal (ScParam "x" NumT) (ScNum 42)
+                        ]
+                    ] , 
+                ScObject "O" [ScEImp "AB" "x"]
+                    [ 
+                      ScVal (ScParam "x" NumT) (ScId "x")
+                    ] 
+                 ]
+  print $ snd t
+  assertEqual "Incorrect types" [ObjT "B" [NumT], NumT] $ fst t 
 
 tests :: Test
 tests = TestList
-    -- Add your test cases to this list
     [ "test1" ~: test1 
     , "test2" ~: test2 
     , "testEImp" ~: testEImp
     , "testWImp" ~: testWImp
     , "testDoubleImport" ~: testDoubleImports
     , "testNameClash" ~: testNameClash
+    , "testMutualDefs" ~: testMutualDefs
+    , "testRecursiveDefs" ~: testRecDefs
+    , "testNestedObjects" ~: testNestedObj
     ]
 
 main :: IO ()

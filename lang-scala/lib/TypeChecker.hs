@@ -10,8 +10,6 @@ import qualified Free.Scope as S (edge, new, sink)
 import Free.Error
 import ScSyntax
 import Debug.Trace
-import Data.Maybe (catMaybes)
-
 
 ----------------------------
 -- Scope Graph Parameters --
@@ -29,19 +27,16 @@ data Label
 -- sink declarations
 data Decl
   = Decl String Type   -- Variable declaration
-  | ObjDecl String Sc -- Object declaration
-  -- | ExplicitImp String Sc -- Explicit Import declaration
+  | ObjDecl String Sc  -- Object declaration
   deriving (Eq)
 
 instance Show Decl where
   show (Decl x t) = x ++ " : " ++ show t
-  -- show (ExplicitImp x s) = "Explicit Import" ++ x ++ " @ " ++ show s
   show (ObjDecl x s) = "Object" ++ x ++ "@" ++ show s
 
 projTy :: Decl -> Type
 projTy (Decl _ t) = t
 projTy (ObjDecl _ _) = error "Cannot project an object"
--- projTy (ExplicitImp _ _) = error "Cannot project an import."
 
 -- Scope Graph Library Convenience
 edge :: Scope Sc Label Decl < f => Sc -> Label -> Sc -> Free f ()
@@ -53,33 +48,13 @@ new = S.new @_ @Label @Decl
 sink :: Scope Sc Label Decl < f => Sc -> Label -> Decl -> Free f ()
 sink = S.sink @_ @Label @Decl
 
--- Regular expression P*VAR
-re :: RE Label
-re = Dot (Star $ Atom P) $ Atom VAR
-
--- Import resolution (P*EI?WI?OBJ)
-reImpResObj :: RE Label
-reImpResObj = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom EI)) (Pipe Empty $ Atom WI)) $ Atom OBJ
-
--- P*WI?VAR
-reImpVar :: RE Label
-reImpVar = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Dot (Atom EI) (Atom VAR)
-
--- Regular expression P*WI?OBJ
-reObj :: RE Label
-reObj = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom EI)) $ Atom VAR
-
 -- (P|EI)*VAR
-re' :: RE Label
-re' = Dot (Star $ Pipe (Atom P) (Atom EI)) $ Atom VAR
+reExplImp :: RE Label
+reExplImp = Dot (Star $ Pipe (Atom P) (Atom EI)) $ Atom VAR
 
 -- P*OBJ
-re'' :: RE Label
-re'' = Dot (Star $ Atom P) $ Atom OBJ
-
--- P*EI
-reEI :: RE Label
-reEI = Dot (Star $ Atom P) $ Atom EI
+reObj :: RE Label
+reObj = Dot (Star $ Atom P) $ Atom OBJ
 
 -- Regular expression P*V TODO Set to P*EI?WI?VAR
 reImpResVar :: RE Label
@@ -96,7 +71,7 @@ matchDecl x (ObjDecl x' _) = x == x'
 
 queryObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Sc -> String -> Free f (Maybe Sc)
 queryObj fromSc toObj = do
-    res <- trace ("We try to query for" ++ toObj) query fromSc re'' pShortest $ matchDecl toObj
+    res <- trace ("We try to query for" ++ toObj) query fromSc reObj pShortest $ matchDecl toObj
     case trace ("Query:" ++ show res) res of
       [] -> return Nothing
       [ObjDecl _ g'] -> return $ Just g'
@@ -158,21 +133,17 @@ tcBinOp l r inp out s = do
 
 
 -- type check declarations
-tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f (Maybe Type)
+tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Type
 tcScDecl (ScVal (ScParam _ t) expr) s = do
     -- sink s VAR $ Decl name t
     t' <- trace ("We type check the expr:" ++ show expr) tcScExp expr s
-    if t == t' then trace ("The resulted type checking is: " ++ show t') return (Just t') else err "Type missmatch in val."
-
+    if t == t' then trace ("The resulted type checking is: " ++ show t') return t' else err "Type missmatch in val."
 tcScDecl (ScDef name t expr) s = do
-  x <- query s re pShortest (matchDecl name)
-  if length x /= 1  then err "variable is defined more than once." 
-  else do
-    t' <- tcScExp expr s -- need to check
-    if t == t' then return t' else err "Type missmatch in definition."
-    return (Just t)
-
-tcScDecl _ _ = return Nothing
+    t' <- trace ("We type check the expr" ++ show expr ++ " in method: " ++ name ) tcScExp expr s
+    if t == t' then trace ("The resulted type checking of method is: " ++ show t') return t' else err "Type missmatch in def."
+tcScDecl (ScObject name _ defs) s = do
+    types <- mapM (`tcScDecl` s) defs
+    return (ObjT name types) 
 
 
 --------------------------- FIRST IDEA --------------------------------------------
@@ -228,6 +199,17 @@ varDecl (ScObject _ _ defs, s) = mapM_ (`declareVar` s) defs
 
 declareVar :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f ()
 declareVar (ScVal (ScParam name t) _) s = sink s VAR $ Decl name t
+declareVar (ScDef name t _) s = do
+    s' <- new
+    edge s' P s
+    sink s' VAR $ Decl name t
+declareVar (ScObject name _ _) s = do 
+    -- Create new scope for the object
+    sObjDef <- new
+    -- Add edge between object scope and parent scope.
+    edge sObjDef P s
+    -- Add object declaration
+    sink s OBJ $ ObjDecl name sObjDef
 
 
 -- Step 4: copy imported names to the importing scopes 
@@ -242,7 +224,7 @@ explImpt (ScEImp objName varName) s = do
         impSc <- queryObj s objName
         case trace ("Query explicit object:" ++ show impSc) impSc of
           Just s' -> do
-              ds' <- trace ("We try to query for explicit var:" ++ varName) query s' re' pShortest (matchDecl varName) <&> map projTy
+              ds' <- trace ("We try to query for explicit var:" ++ varName) query s' reExplImp pShortest (matchDecl varName) <&> map projTy
               case trace ("Query explicit var:" ++ show ds') ds' of
                 [] -> err "No matching declarations found - explicit import"
                 [t] -> do
@@ -266,10 +248,9 @@ step5 p s = do
   -- explicit imports
   _ <- step4 scopedProg
   -- Type check the rest
-  result <- concat <$> mapM tcObj scopedProg
-  return (catMaybes result) -- Filter out 'Nothing' values
+  concat <$> mapM tcObj scopedProg
   where
-    tcObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Maybe Type]
+    tcObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Type]
     tcObj (ScObject _ _ defs, g) = mapM (`tcScDecl` g) defs
   
 
