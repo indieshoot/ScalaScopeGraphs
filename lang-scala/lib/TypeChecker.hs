@@ -79,12 +79,11 @@ reObj = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Atom OBJ
 re' :: RE Label
 re' = Dot (Star $ Pipe (Atom P) (Atom WI)) $ Atom VAR
 
+-- 
 re'' :: RE Label
 re'' = Dot (Star $ Atom P) $ Atom OBJ
 
--- Expression for Wildcard imports
-reWildcard :: RE Label
-reWildcard = Dot (Star $ Atom P) $ (Star $ Atom WI)
+
 
 -- Path order based on length
 pShortest :: PathOrder Label Decl
@@ -234,10 +233,10 @@ impt (ScEImp objName varName) s = do
           Nothing -> err "Import scope not found" 
 impt (ScWImp objName) s = do 
       impSc <- queryObj s objName
-      case impSc of
+      case trace ("Query wildcard import:" ++ show impSc) impSc of
         Just s' -> do
           -- Draw an edge from s to the imported s'.
-          edge s WI s' 
+          trace ("Drawing edge from:" ++ show s ++ "to: " ++ show s') edge s WI s' 
         _ -> err $ "Object " ++ objName ++ "'does not exist."
 
 

@@ -67,12 +67,6 @@ testEImp = do
 --     val y : Int = x
 --   }
 
---  ScObject "B" 
---                     [ ScImport (ScWImp "A"),
---                       ScVal (ScParam "y" NumT) (ScId "x")
---                     ] 
---                  ]
-
 testWImp :: IO ()
 testWImp = do
   t <- runTCPh [ScObject "A" []
@@ -86,6 +80,17 @@ testWImp = do
                     ] 
                  ]
   assertEqual "Incorrect types" [BoolT, NumT, NumT] $ fst t 
+
+tests :: Test
+tests = TestList
+    -- Add your test cases to this list
+    [ "test1" ~: test1 
+    , "test2" ~: test2 
+    , "testEImp" ~: testEImp
+    , "testWImp" ~: testWImp
+    -- , "testDoubleImport" ~: testDoubleImports
+    -- , "testNameClash" ~: testNameClash
+    ]
 
 
 -- object A {
@@ -143,16 +148,7 @@ testNameClash = do
                ]
   assertEqual "Incorrect types" [NumT, NumT, NumT] $ fst t 
 
-tests :: Test
-tests = TestList
-    -- Add your test cases to this list
-    [ "test1" ~: test1 
-    , "test2" ~: test2 
-    , "testEImp" ~: testEImp
-    , "testWImp" ~: testWImp
-    -- , "testDoubleImport" ~: testDoubleImports
-    -- , "testNameClash" ~: testNameClash
-    ]
+
 
 
 main :: IO ()
@@ -169,3 +165,9 @@ testTypeCheck message expected res = do
 print' :: Either String (Graph Label Decl) -> IO ()
 print' (Right g) = print g
 print' (Left e) = putStrLn $ "Received error message: " ++ e
+
+--  ScObject "B" 
+--                     [ ScImport (ScWImp "A"),
+--                       ScVal (ScParam "y" NumT) (ScId "x")
+--                     ] 
+--                  ]
