@@ -48,15 +48,12 @@ testEImp = do
                       ScVal (ScParam "x" NumT) (ScNum 3)
                       -- ScVal (ScParam "x" NumT) (ScId "y")
                     ] , 
-                ScObject "B" [(ScEImp "A" "x")]
+                ScObject "B" [ScEImp "A" "x"]
                     [ 
-                      ScVal (ScParam "y" NumT) (ScId "X")] 
+                      ScVal (ScParam "y" NumT) (ScId "x")] 
                  ]
   print $ snd t
   assertEqual "Incorrect types" [NumT, NumT] $ fst t 
-
-  -- testTypeCheck "Type checks" True $! runTCAll [ ScVal (ScParam "x" NumT) (ScNum 2) ]
-
 
 -- object A {
 --   val y : Bool = True
@@ -71,7 +68,7 @@ testWImp :: IO ()
 testWImp = do
   t <- runTCPh [ScObject "A" []
                     [ 
-                      -- ScVal (ScParam "y" BoolT) (ScBool True) , 
+                      ScVal (ScParam "y" BoolT) (ScBool True) , 
                       ScVal (ScParam "x" NumT) (ScNum 5) 
                     ] , 
                 ScObject "B" [ScWImp "A"]
@@ -79,23 +76,13 @@ testWImp = do
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                  ]
+  print $ snd t
   assertEqual "Incorrect types" [BoolT, NumT, NumT] $ fst t 
-
-tests :: Test
-tests = TestList
-    -- Add your test cases to this list
-    [ "test1" ~: test1 
-    , "test2" ~: test2 
-    , "testEImp" ~: testEImp
-    , "testWImp" ~: testWImp
-    -- , "testDoubleImport" ~: testDoubleImports
-    -- , "testNameClash" ~: testNameClash
-    ]
 
 
 -- object A {
 --   import B._;
---   val x : Int = 5
+--   val x : Int = y
 -- }
 -- object B {
 --     import A.x;
@@ -104,15 +91,16 @@ tests = TestList
 
 testDoubleImports :: IO ()
 testDoubleImports = do
-  t <- runTCPh [ScObject "A" [(ScWImp "B")]
+  t <- runTCPh [ScObject "A" [ScWImp "B"]
                     [ 
-                      ScVal (ScParam "x" NumT) (ScNum 5) 
+                      ScVal (ScParam "x" NumT) (ScId "y") 
                     ] , 
-                ScObject "B" [(ScEImp "A" "x")]
+                ScObject "B" [ScEImp "A" "x"]
                     [ 
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                  ]
+  print $ snd t
   assertEqual "Incorrect types" [NumT, NumT] $ fst t 
 
 
@@ -139,35 +127,30 @@ testNameClash = do
                     ] , 
                 ScObject "B" []
                     [ 
-                      ScVal (ScParam "y" NumT) (ScNum 42)
+                      ScVal (ScParam "x" BoolT) (ScBool True)
                     ] ,
-                ScObject "C" [(ScWImp "B"), (ScEImp "A" "x")]
+                ScObject "C" [ScWImp "B", ScEImp "A" "x"]
                     [ 
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                ]
-  assertEqual "Incorrect types" [NumT, NumT, NumT] $ fst t 
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, BoolT, NumT] $ fst t 
 
 
-
+tests :: Test
+tests = TestList
+    -- Add your test cases to this list
+    [ "test1" ~: test1 
+    , "test2" ~: test2 
+    , "testEImp" ~: testEImp
+    , "testWImp" ~: testWImp
+    , "testDoubleImport" ~: testDoubleImports
+    , "testNameClash" ~: testNameClash
+    ]
 
 main :: IO ()
 main = do
     result <- runTestTT tests
     print result
     if errors result > 0 || failures result > 0 then Exit.exitFailure else Exit.exitSuccess
-
-testTypeCheck :: String -> Bool -> Either String (Graph Label Decl) -> IO ()
-testTypeCheck message expected res = do
-  trace "Intentional behaviour" $ print' $! res
-  assertEqual message expected $ isRight res
-  
-print' :: Either String (Graph Label Decl) -> IO ()
-print' (Right g) = print g
-print' (Left e) = putStrLn $ "Received error message: " ++ e
-
---  ScObject "B" 
---                     [ ScImport (ScWImp "A"),
---                       ScVal (ScParam "y" NumT) (ScId "x")
---                     ] 
---                  ]

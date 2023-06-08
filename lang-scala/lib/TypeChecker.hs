@@ -57,33 +57,33 @@ sink = S.sink @_ @Label @Decl
 re :: RE Label
 re = Dot (Star $ Atom P) $ Atom VAR
 
-
--- Regular expression P*V TODO Set to P*EI?WI?VAR
-reImpResVar :: RE Label
-reImpResVar = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom EI)) (Pipe Empty $ Atom WI)) $ Atom VAR
-
-
 -- Import resolution (P*EI?WI?OBJ)
 reImpResObj :: RE Label
 reImpResObj = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom EI)) (Pipe Empty $ Atom WI)) $ Atom OBJ
 
 -- P*WI?VAR
 reImpVar :: RE Label
-reImpVar = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Atom VAR
+reImpVar = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Dot (Atom EI) (Atom VAR)
 
 -- Regular expression P*WI?OBJ
 reObj :: RE Label
-reObj = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Atom OBJ
+reObj = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom EI)) $ Atom VAR
 
--- (P|WI)*VAR
+-- (P|EI)*VAR
 re' :: RE Label
-re' = Dot (Star $ Pipe (Atom P) (Atom WI)) $ Atom VAR
+re' = Dot (Star $ Pipe (Atom P) (Atom EI)) $ Atom VAR
 
--- 
+-- P*OBJ
 re'' :: RE Label
 re'' = Dot (Star $ Atom P) $ Atom OBJ
 
+-- P*EI
+reEI :: RE Label
+reEI = Dot (Star $ Atom P) $ Atom EI
 
+-- Regular expression P*V TODO Set to P*EI?WI?VAR
+reImpResVar :: RE Label
+reImpResVar = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Pipe (Atom VAR) (Atom EI)
 
 -- Path order based on length
 pShortest :: PathOrder Label Decl
@@ -92,7 +92,6 @@ pShortest p1 p2 = lenRPath p1 < lenRPath p2
 -- Match declaration with particular name
 matchDecl :: String -> Decl -> Bool
 matchDecl x (Decl x' _) = x == x'
--- matchDecl x (ExplicitImp x' _) = x == x'
 matchDecl x (ObjDecl x' _) = x == x'
 
 queryObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Sc -> String -> Free f (Maybe Sc)
@@ -118,7 +117,7 @@ tcScExp (ScNum _) _ = return NumT
 tcScExp (ScBool _) _ = return BoolT
 tcScExp (ScId x) s = do
   ds <- query s reImpResVar pShortest (matchDecl x) <&> map projTy
-  case ds of
+  case trace ("The resulted queried expression is: " ++ show ds) ds of
     [] -> err "No matching declarations found - expression"
     [t] -> return t
     _ -> err "BUG: Multiple declarations found" -- cannot happen for STLC
@@ -160,18 +159,10 @@ tcBinOp l r inp out s = do
 
 -- type check declarations
 tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f (Maybe Type)
-tcScDecl (ScVal (ScParam name t) expr) s = do
-    t' <- tcScExp expr s
-    sink s VAR $ Decl name t
-    if t == t' then return (Just t') else err "Type missmatch in val."
-
-  -- x <- query s re pShortest (matchDecl name)
-  -- let xLength = length x
-  -- trace ("\nLength of query: " ++ show xLength) $ return ()  -- Print the length
-  -- -- Check if the variable exists or if it declrared more than once.
-  -- if length x < 1  then err "The variable is not defined." 
-  -- else if length x > 1 then err "The variable is defined more than once."
-  -- else do
+tcScDecl (ScVal (ScParam _ t) expr) s = do
+    -- sink s VAR $ Decl name t
+    t' <- trace ("We type check the expr:" ++ show expr) tcScExp expr s
+    if t == t' then trace ("The resulted type checking is: " ++ show t') return (Just t') else err "Type missmatch in val."
 
 tcScDecl (ScDef name t expr) s = do
   x <- query s re pShortest (matchDecl name)
@@ -187,12 +178,13 @@ tcScDecl _ _ = return Nothing
 --------------------------- FIRST IDEA --------------------------------------------
 -- MAIN PHASES
 
--- Step 1: Create all object scopes
--- Step 2: Deal with imports. 
---          - Copy imported names from Explicit Imports.
---          - Draw WI edges for Wildcard Imports.
--- Step 3: Declare all variables.
--- Step 4: Type-checking all initialization expressions
+-- Step 1: Declare objects
+-- Step 2: Resolve and declare wildcard imports
+--       - Draw WI edges for Wildcard Imports.
+-- Step 3: Declare variables
+-- Step 4: Resolve and declare named imports
+--       - Copy imported names from Explicit Imports.
+-- Step 5: Type-check expressions
 
 -- Step 1: allocate objects scopes
 step1 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Sc]
@@ -209,29 +201,16 @@ scopeObj (ScObject name _ _) s = do
       return sObjDef
 
 
--- Step 2: add import edges and copy imported names to object graph. 
+-- Step 2: add wildcard import edges to scope graph 
 step2 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
-step2 = mapM_ impRes
+step2 = mapM_ impResAbs
 
-impRes :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
-impRes (ScObject _ imps _, s) = mapM_ (`impt` s) imps -- Import individually.
+impResAbs :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
+impResAbs (ScObject _ imps _, s) = mapM_ (`wildImpt` s) imps -- Import individually.
 
-
--- This will attempt to create a singular import edge given a specific "current" scope.
-impt :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Imp -> Sc -> Free f ()
-impt (ScEImp objName varName) s = do
-        impSc <- queryObj s objName
-        case impSc of
-          Just s' -> do
-              ds' <- trace ("We try to query for var:" ++ varName) query s' re' pShortest (matchDecl varName) <&> map projTy
-              case trace ("Query var:" ++ show ds') ds' of
-                [] -> err "No matching declarations found - imp"
-                [t] -> do
-                -- copy name in our scope
-                  sink s EI $ Decl varName t
-                _ -> err "BUG: Multiple declarations found - import res"
-          Nothing -> err "Import scope not found" 
-impt (ScWImp objName) s = do 
+wildImpt :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Imp -> Sc -> Free f ()
+wildImpt (ScEImp _ _) _ = return ()
+wildImpt (ScWImp objName) s = do 
       impSc <- queryObj s objName
       case trace ("Query wildcard import:" ++ show impSc) impSc of
         Just s' -> do
@@ -240,12 +219,52 @@ impt (ScWImp objName) s = do
         _ -> err $ "Object " ++ objName ++ "'does not exist."
 
 
--- Step 3: type check
-step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Type]
-step3 p s = do
+-- Step 3: Variable declaration phase
+step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
+step3 = mapM_ varDecl
+
+varDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
+varDecl (ScObject _ _ defs, s) = mapM_ (`declareVar` s) defs
+
+declareVar :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f ()
+declareVar (ScVal (ScParam name t) _) s = sink s VAR $ Decl name t
+
+
+-- Step 4: copy imported names to the importing scopes 
+step4 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
+step4 = mapM_ impResExp
+
+impResExp :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
+impResExp (ScObject _ imps _, s) = mapM_ (`explImpt` s) imps -- Import individually.
+
+explImpt :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Imp -> Sc -> Free f ()
+explImpt (ScEImp objName varName) s = do
+        impSc <- queryObj s objName
+        case trace ("Query explicit object:" ++ show impSc) impSc of
+          Just s' -> do
+              ds' <- trace ("We try to query for explicit var:" ++ varName) query s' re' pShortest (matchDecl varName) <&> map projTy
+              case trace ("Query explicit var:" ++ show ds') ds' of
+                [] -> err "No matching declarations found - explicit import"
+                [t] -> do
+                -- copy name in our scope
+                  sink s EI $ Decl varName t
+                _ -> err "BUG: Multiple declarations found - import res"
+          Nothing -> err "Import scope not found" 
+explImpt (ScWImp _) _ = return ()
+
+
+-- Step 5: type check
+step5 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Type]
+step5 p s = do
+  -- allocate object scopes
   objSc <- step1 p s
   let scopedProg = zip p objSc
+  -- wildcard imports
   _ <- step2 scopedProg
+  -- Variable declaration phase
+  _ <- step3 scopedProg
+  -- explicit imports
+  _ <- step4 scopedProg
   -- Type check the rest
   result <- concat <$> mapM tcObj scopedProg
   return (catMaybes result) -- Filter out 'Nothing' values
@@ -254,85 +273,14 @@ step3 p s = do
     tcObj (ScObject _ _ defs, g) = mapM (`tcScDecl` g) defs
   
 
-runTCPhased :: ScProg -> Either String ([Type], Graph Label Decl)
-runTCPhased p = un
-        $ handle hErr
-        $ handle_ hScope (step3 p 0) emptyGraph
-
-
-
-------------------------------------THIRD IDEA------------------------------------------------------
-
--- Scope Graph Construction
--- Object Hierarchal Structure - keeps track of the hierarchical order of objects in a Scala program
--- Example of possible structure: objects can contain inner objects, imports and declarations.
-
--- 	1) Create object hierarchy
--- 	2) Import resolution (P*EI?WI?OBJ)
--- 	3) Add declarations
---  4) Type check decl bodies, mostly based on (1)
-
-
--- Build object hierarchy
--- Need to return the scope graph for further processing -> subprogram 
-objHierarchy :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ObjStructure -> Sc -> Free f ObjScope
-objHierarchy (SubProg objName i rest defs) s = do
-  -- New object scope
-  s' <- new
-  edge s' P s
-  -- Create object declaration
-  sink s OBJ $ ObjDecl objName s'
-  -- Recursive case
-  rest' <- mapM (`objHierarchy` s') rest
-  -- Return the subprogram with the scope.
-  return $ SubProgSc objName i rest' defs s'
-
-
--- method for import resolution here
-
--- Create all declarations.
-addSinks :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ObjScope -> Free f [(ScExp, Sc)]
-addSinks (SubProgSc _ _ rest defs s) = do
-  x <- mapM (tcDef s) defs
-  xs <- concat <$> mapM addSinks rest
-  return $ x ++ xs
-  where
-    tcDef s (ScVal (ScParam name t) expr) = do
-      tcScExp expr s 
-      sink s VAR $ Decl name t
-      return (expr, s)
-    tcDef s (ScDef name t expr)  = do
-      tcScExp expr s
-      s' <- new
-      edge s' P s
-      sink s' VAR $ Decl name t
-      return (expr, s)
-
--- runTcObjects :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f ()
--- runTcObjects e g = do
---   -- subProgs <- createObjHierarchy
---   -- defs <- addSinks subProgs
---   mapM_ (\(g, e) -> tcScExp e g ) defs
-
-
 ----------------------------------------RUN METHODS---------------------------------------------------
 
 -- Tie it all together
 
--- runTCAll :: ScProg -> Either String (Graph Label Decl)
--- runTCAll prog = 
---   let tuple = un 
---         $ handle hErr
---         $ handle_ hScope (tcAll prog 0
---         :: Free ( Scope Sc Label Decl
---                 + Error String
---                 + Nop )
---                 ()
---         ) emptyGraph
---   in case tuple of 
---       Left err -> Left err
---       Right ((), sg) -> Right sg
-
+runTCPhased :: ScProg -> Either String ([Type], Graph Label Decl)
+runTCPhased p = un
+        $ handle hErr
+        $ handle_ hScope (step5 p 0) emptyGraph
     
 runTC :: ScExp -> Either String (Type, Graph Label Decl)
 runTC e = un
