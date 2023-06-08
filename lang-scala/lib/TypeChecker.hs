@@ -57,9 +57,15 @@ sink = S.sink @_ @Label @Decl
 re :: RE Label
 re = Dot (Star $ Atom P) $ Atom VAR
 
+
+-- Regular expression P*V TODO Set to P*EI?WI?VAR
+reImpResVar :: RE Label
+reImpResVar = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom EI)) (Pipe Empty $ Atom WI)) $ Atom VAR
+
+
 -- Import resolution (P*EI?WI?OBJ)
-reImpRes :: RE Label
-reImpRes = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom EI)) (Pipe Empty $ Atom WI)) $ Atom OBJ
+reImpResObj :: RE Label
+reImpResObj = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom EI)) (Pipe Empty $ Atom WI)) $ Atom OBJ
 
 -- P*WI?VAR
 reImpVar :: RE Label
@@ -69,9 +75,9 @@ reImpVar = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Atom VAR
 reObj :: RE Label
 reObj = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Atom OBJ
 
--- Regular expression for variable declarations
+-- (P|WI)*VAR
 re' :: RE Label
-re' = Dot (Star (Pipe (Atom P) (Atom OBJ))) (Atom VAR)
+re' = Dot (Star $ Pipe (Atom P) (Atom WI)) $ Atom VAR
 
 re'' :: RE Label
 re'' = Dot (Star $ Atom P) $ Atom OBJ
@@ -92,7 +98,7 @@ matchDecl x (ObjDecl x' _) = x == x'
 
 queryObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Sc -> String -> Free f (Maybe Sc)
 queryObj fromSc toObj = do
-    res <- trace ("We try to quert for" ++ toObj) query fromSc reImpRes pShortest $ matchDecl toObj
+    res <- trace ("We try to query for" ++ toObj) query fromSc re'' pShortest $ matchDecl toObj
     case trace ("Query:" ++ show res) res of
       [] -> return Nothing
       [ObjDecl _ g'] -> return $ Just g'
@@ -112,7 +118,7 @@ tcScExp ::
 tcScExp (ScNum _) _ = return NumT
 tcScExp (ScBool _) _ = return BoolT
 tcScExp (ScId x) s = do
-  ds <- query s re pShortest (matchDecl x) <&> map projTy
+  ds <- query s reImpResVar pShortest (matchDecl x) <&> map projTy
   case ds of
     [] -> err "No matching declarations found - expression"
     [t] -> return t
@@ -156,6 +162,10 @@ tcBinOp l r inp out s = do
 -- type check declarations
 tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f (Maybe Type)
 tcScDecl (ScVal (ScParam name t) expr) s = do
+    t' <- tcScExp expr s
+    sink s VAR $ Decl name t
+    if t == t' then return (Just t') else err "Type missmatch in val."
+
   -- x <- query s re pShortest (matchDecl name)
   -- let xLength = length x
   -- trace ("\nLength of query: " ++ show xLength) $ return ()  -- Print the length
@@ -163,10 +173,7 @@ tcScDecl (ScVal (ScParam name t) expr) s = do
   -- if length x < 1  then err "The variable is not defined." 
   -- else if length x > 1 then err "The variable is defined more than once."
   -- else do
-    t' <- tcScExp expr s -- need to check
-    -- Add the declaration to the current scope. Do NOT start a new scope.
-    sink s VAR $ Decl name t
-    if t == t' then return (Just t') else err "Type missmatch in val."
+
 tcScDecl (ScDef name t expr) s = do
   x <- query s re pShortest (matchDecl name)
   if length x /= 1  then err "variable is defined more than once." 
@@ -175,8 +182,7 @@ tcScDecl (ScDef name t expr) s = do
     if t == t' then return t' else err "Type missmatch in definition."
     return (Just t)
 
-tcScDecl (ScObject name _) _ = return Nothing
-tcScDecl (ScImport _) _ = return Nothing
+tcScDecl _ _ = return Nothing
 
 
 --------------------------- FIRST IDEA --------------------------------------------
@@ -194,7 +200,7 @@ step1 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc 
 step1 p s = mapM (`scopeObj` s) p
 
 scopeObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Sc
-scopeObj (ScObject name _) s = do 
+scopeObj (ScObject name _ _) s = do 
       -- Create new scope for the object
       sObjDef <- new
       -- Add edge between object scope and parent scope.
@@ -203,31 +209,37 @@ scopeObj (ScObject name _) s = do
       sink s OBJ $ ObjDecl name sObjDef
       return sObjDef
 
+
 -- Step 2: add import edges and copy imported names to object graph. 
 step2 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
 step2 = mapM_ impRes
 
 impRes :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
-impRes (ScImport (ScEImp objName varName), s) = do 
+impRes (ScObject _ imps _, s) = mapM_ (`impt` s) imps -- Import individually.
+
+
+-- This will attempt to create a singular import edge given a specific "current" scope.
+impt :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Imp -> Sc -> Free f ()
+impt (ScEImp objName varName) s = do
         impSc <- queryObj s objName
         case impSc of
           Just s' -> do
-              ds' <- query s' re pShortest (matchDecl varName) <&> map projTy
-              case ds' of
+              ds' <- trace ("We try to query for var:" ++ varName) query s' re' pShortest (matchDecl varName) <&> map projTy
+              case trace ("Query var:" ++ show ds') ds' of
                 [] -> err "No matching declarations found - imp"
                 [t] -> do
                 -- copy name in our scope
                   sink s EI $ Decl varName t
                 _ -> err "BUG: Multiple declarations found - import res"
           Nothing -> err "Import scope not found" 
-impRes (ScImport (ScWImp objName), s) = do 
+impt (ScWImp objName) s = do 
       impSc <- queryObj s objName
       case impSc of
         Just s' -> do
           -- Draw an edge from s to the imported s'.
           edge s WI s' 
         _ -> err $ "Object " ++ objName ++ "'does not exist."
-impRes _ = return ()
+
 
 -- Step 3: type check
 step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Type]
@@ -236,12 +248,11 @@ step3 p s = do
   let scopedProg = zip p objSc
   _ <- step2 scopedProg
   -- Type check the rest
-  -- concat <$> mapM tcObj scopedProg
   result <- concat <$> mapM tcObj scopedProg
   return (catMaybes result) -- Filter out 'Nothing' values
   where
     tcObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Maybe Type]
-    tcObj (ScObject _ defs, g) = mapM (`tcScDecl` g) defs
+    tcObj (ScObject _ _ defs, g) = mapM (`tcScDecl` g) defs
   
 
 runTCPhased :: ScProg -> Either String ([Type], Graph Label Decl)
@@ -249,42 +260,6 @@ runTCPhased p = un
         $ handle hErr
         $ handle_ hScope (step3 p 0) emptyGraph
 
-
------------------------------------------SECOND IDEA--------------------------------------------------------
-
--- Build the scope graph
-buildSG :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f ()
--- values
-buildSG (ScVal (ScParam name t) _) s = do
-    sink s VAR $ Decl name t
-
--- definitions
-buildSG (ScDef name t _) s = do
-    s' <- new
-    edge s' P s
-    sink s' VAR $ Decl name t
-
--- objects
-buildSG (ScObject name defs) s = do
-  -- Create new scope for the object
-  sObjDef <- new
-  -- Add edge between object scope and outer scope.
-  edge sObjDef P s
-  -- Link object to its parent scope.
-  sink s OBJ $ ObjDecl name sObjDef
-  -- Recursively create the scopes for the childrent within the object.
-  mapM_ (`buildSG` sObjDef) defs
-
-
--- type check the Scala program.
-tcAll :: ( Functor f, Error String < f, Scope Sc Label Decl < f)
-   => ScProg -> Sc -> Free f ()
-tcAll p s = do
-  -- Phase 1: allocate scopes
-  mapM_ (`buildSG` s) p
-
-  -- Phase 2: type check declarations
-  mapM_ (`tcScDecl` s) p
 
 
 ------------------------------------THIRD IDEA------------------------------------------------------
@@ -345,19 +320,19 @@ addSinks (SubProgSc _ _ rest defs s) = do
 
 -- Tie it all together
 
-runTCAll :: ScProg -> Either String (Graph Label Decl)
-runTCAll prog = 
-  let tuple = un 
-        $ handle hErr
-        $ handle_ hScope (tcAll prog 0
-        :: Free ( Scope Sc Label Decl
-                + Error String
-                + Nop )
-                ()
-        ) emptyGraph
-  in case tuple of 
-      Left err -> Left err
-      Right ((), sg) -> Right sg
+-- runTCAll :: ScProg -> Either String (Graph Label Decl)
+-- runTCAll prog = 
+--   let tuple = un 
+--         $ handle hErr
+--         $ handle_ hScope (tcAll prog 0
+--         :: Free ( Scope Sc Label Decl
+--                 + Error String
+--                 + Nop )
+--                 ()
+--         ) emptyGraph
+--   in case tuple of 
+--       Left err -> Left err
+--       Right ((), sg) -> Right sg
 
     
 runTC :: ScExp -> Either String (Type, Graph Label Decl)

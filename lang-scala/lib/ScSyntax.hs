@@ -34,8 +34,8 @@ type ScProg' = [(ScDecl, Sc)]
 data ScDecl
   = ScVal ScParam ScExp 
   | ScDef String Type ScExp
-  | ScObject String [ScDecl] -- object MyObj { ... }
-  | ScImport Imp
+  | ScObject String [Imp] [ScDecl] -- object MyObj { ... }
+  -- | ScImport Imp
   deriving (Eq, Show)
 
 data ScParam = ScParam String Type deriving (Eq, Show)
