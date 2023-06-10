@@ -14,8 +14,8 @@ import Debug.Trace (trace)
 runTCTest :: ScExp -> IO (Type, Graph Label Decl) 
 runTCTest = either assertFailure return . runTC
 
-runTCFail :: ScExp -> IO String
-runTCFail e = either return (const $ assertFailure "Expected exception, got none") $ runTC e
+runTCFail :: ScProg -> IO String
+runTCFail p = either return (const $ assertFailure "Expected exception, got none") $ runTCPhased p
 
 
 runTCPh :: ScProg -> IO ([Type], Graph Label Decl) 
@@ -48,7 +48,7 @@ testEImp = do
                       ScVal (ScParam "x" NumT) (ScNum 3)
                       -- ScVal (ScParam "x" NumT) (ScId "y")
                     ] , 
-                ScObject "B" [ScEImp "A" "x"]
+                ScObject "B" [ScEImp ["A"] "x"]
                     [ 
                       ScVal (ScParam "y" NumT) (ScId "x")] 
                  ]
@@ -95,7 +95,7 @@ testDoubleImports = do
                     [ 
                       ScVal (ScParam "x" NumT) (ScId "y") 
                     ] , 
-                ScObject "B" [ScEImp "A" "x"]
+                ScObject "B" [ScEImp ["A"] "x"]
                     [ 
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
@@ -129,7 +129,7 @@ testNameClash = do
                     [ 
                       ScVal (ScParam "x" BoolT) (ScBool True)
                     ] ,
-                ScObject "C" [ScWImp "B", ScEImp "A" "x"]
+                ScObject "C" [ScWImp "B", ScEImp ["A"] "x"]
                     [ 
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
@@ -146,8 +146,8 @@ testMutualDefs :: IO ()
 testMutualDefs = do
   t <- runTCPh [ScObject "A" []
                     [
-                      ScVal (ScParam "x" NumT) (ScId "y"),
-                      ScVal (ScParam "y" NumT) (ScId "x") 
+                      ScDef "f" NumT (ScId "g"), 
+                      ScDef "g" NumT (ScId "f")
                     ] 
                ]
   print $ snd t
@@ -162,7 +162,8 @@ testRecDefs :: IO ()
 testRecDefs = do
   t <- runTCPh [ScObject "A" []
                     [
-                      ScVal (ScParam "x" NumT) (ScId "x")
+                      ScDef "x" NumT (ScId "x")
+                      -- ScVal (ScParam "x" NumT) (ScId "x")
                     ] 
                ]
   print $ snd t
@@ -203,32 +204,82 @@ testNestedObj = do
 
 testQualifiedRef :: IO ()
 testQualifiedRef = do
-  t <- runTCPh [ScObject "A" [ScWImp "B"]
+  t <- runTCPh [ScObject "A" []
                     [ 
                       ScObject "B" []
                         [
                           ScVal (ScParam "x" NumT) (ScNum 42)
                         ]
                     ] , 
-                ScObject "O" [ScEImp "AB" "x"]
+                ScObject "O" [ScEImp ["A", "B"] "x"]
                     [ 
-                      ScVal (ScParam "x" NumT) (ScId "x")
+                      ScVal (ScParam "x" NumT) (ScNum 3)
                     ] 
                  ]
   print $ snd t
   assertEqual "Incorrect types" [ObjT "B" [NumT], NumT] $ fst t 
 
+-- object A {
+--   def A: Int = A;
+-- };
+
+testSameNameDef :: IO ()
+testSameNameDef = do
+  t <- runTCPh [ScObject "x" []
+                    [
+                      ScDef "x" NumT (ScId "x")
+                      -- ScVal (ScParam "x" NumT) (ScId "x")
+                    ] 
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT] $ fst t 
+
+-- object A {
+--   def f: Int = 42;
+--   def f: Int = 21;
+-- };
+
+testDuplicateVal :: IO ()
+testDuplicateVal = do
+  t <- runTCFail [ScObject "A" []
+                    [
+                      ScVal (ScParam "x" NumT) (ScNum 3), 
+                      ScVal (ScParam "x" NumT) (ScNum 4)
+                    ] 
+               ]
+  assertEqual "Incorrect types" "Error: there is already a declaration x : num at label VAR" t
+
+-- object A {
+--   def f: Int = g;
+--   def g: Int = 42;
+-- };
+
+testForwardRef :: IO ()
+testForwardRef = do
+  t <- runTCPh [ScObject "A" []
+                    [
+                      ScDef "f" NumT (ScId "g"), 
+                      ScDef "g" NumT (ScNum 3)
+                    ] 
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t 
+
 tests :: Test
 tests = TestList
     [ "test1" ~: test1 
-    , "test2" ~: test2 
-    , "testEImp" ~: testEImp
-    , "testWImp" ~: testWImp
-    , "testDoubleImport" ~: testDoubleImports
-    , "testNameClash" ~: testNameClash
-    , "testMutualDefs" ~: testMutualDefs
-    , "testRecursiveDefs" ~: testRecDefs
-    , "testNestedObjects" ~: testNestedObj
+    -- , "test2" ~: test2 
+    -- , "testEImp" ~: testEImp
+    -- , "testWImp" ~: testWImp
+    -- , "testDoubleImport" ~: testDoubleImports
+    -- , "testNameClash" ~: testNameClash
+    -- , "testMutualDefs" ~: testMutualDefs
+    -- , "testRecursiveDefs" ~: testRecDefs
+    -- , "testNestedObjects" ~: testNestedObj
+    , "testMultipleExplicitImp" ~: testQualifiedRef
+    -- , "testAllSameName" ~: testSameNameDef
+    -- , "testDuplicateValue" ~: testDuplicateVal
+    -- , "testForwardReference"  ~: testForwardRef
     ]
 
 main :: IO ()

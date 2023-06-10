@@ -42,7 +42,7 @@ type ObjName = String
 type VarName = String
 
 data Imp 
-  = ScEImp ObjName VarName
+  = ScEImp [ObjName] VarName
   | ScWImp ObjName
   deriving (Eq, Show)
 

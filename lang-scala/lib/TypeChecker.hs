@@ -22,6 +22,7 @@ data Label
   | EI  -- Explicit Import Label
   | VAR -- Variable Label
   | OBJ -- Object label
+  | DEF -- Definition Label
   deriving (Show, Eq)
 
 -- sink declarations
@@ -56,9 +57,13 @@ reExplImp = Dot (Star $ Pipe (Atom P) (Atom EI)) $ Atom VAR
 reObj :: RE Label
 reObj = Dot (Star $ Atom P) $ Atom OBJ
 
--- Regular expression P*V TODO Set to P*EI?WI?VAR
+-- P*OBJ
+reDef :: RE Label
+reDef = Dot  (Star (Atom P))  $ Atom VAR
+
+-- Regular expression
 reImpResVar :: RE Label
-reImpResVar = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Pipe (Atom VAR) (Atom EI)
+reImpResVar = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom DEF)) (Pipe Empty $ Atom WI)) $ Pipe (Atom VAR) (Atom EI)
 
 -- Path order based on length
 pShortest :: PathOrder Label Decl
@@ -91,7 +96,7 @@ tcScExp ::
 tcScExp (ScNum _) _ = return NumT
 tcScExp (ScBool _) _ = return BoolT
 tcScExp (ScId x) s = do
-  ds <- query s reImpResVar pShortest (matchDecl x) <&> map projTy
+  ds <- trace ("We query VAL: " ++ x ++ " from scope: " ++ show s) query s reImpResVar pShortest (matchDecl x) <&> map projTy
   case trace ("The resulted queried expression is: " ++ show ds) ds of
     [] -> err "No matching declarations found - expression"
     [t] -> return t
@@ -142,8 +147,15 @@ tcScDecl (ScDef name t expr) s = do
     t' <- trace ("We type check the expr" ++ show expr ++ " in method: " ++ name ) tcScExp expr s
     if t == t' then trace ("The resulted type checking of method is: " ++ show t') return t' else err "Type missmatch in def."
 tcScDecl (ScObject name _ defs) s = do
-    types <- mapM (`tcScDecl` s) defs
-    return (ObjT name types) 
+      -- -- Create new scope for the object
+      -- sObjDef <- new
+      -- -- Add edge between object scope and parent scope.
+      -- edge sObjDef P s
+      -- -- Add object declaration
+      -- sink s OBJ $ ObjDecl name sObjDef
+      types <- mapM (`tcScDecl` s) defs
+      -- types <- step5 defs s
+      return (ObjT name types) 
 
 
 --------------------------- FIRST IDEA --------------------------------------------
@@ -191,18 +203,22 @@ wildImpt (ScWImp objName) s = do
 
 
 -- Step 3: Variable declaration phase
-step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
-step3 = mapM_ varDecl
+step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f [Sc]
+step3 p = concat <$> mapM varDecl p 
 
-varDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
-varDecl (ScObject _ _ defs, s) = mapM_ (`declareVar` s) defs
+varDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Sc]
+varDecl (ScObject _ _ defs, s) = mapM (`declareVar` s) defs
 
-declareVar :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f ()
-declareVar (ScVal (ScParam name t) _) s = sink s VAR $ Decl name t
+declareVar :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Sc
+declareVar (ScVal (ScParam name t) _) s = do
+    sink s VAR $ Decl name t
+    return s
 declareVar (ScDef name t _) s = do
     s' <- new
     edge s' P s
+    edge s DEF s'
     sink s' VAR $ Decl name t
+    return s'
 declareVar (ScObject name _ _) s = do 
     -- Create new scope for the object
     sObjDef <- new
@@ -210,6 +226,7 @@ declareVar (ScObject name _ _) s = do
     edge sObjDef P s
     -- Add object declaration
     sink s OBJ $ ObjDecl name sObjDef
+    return sObjDef
 
 
 -- Step 4: copy imported names to the importing scopes 
@@ -221,7 +238,7 @@ impResExp (ScObject _ imps _, s) = mapM_ (`explImpt` s) imps -- Import individua
 
 explImpt :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Imp -> Sc -> Free f ()
 explImpt (ScEImp objName varName) s = do
-        impSc <- queryObj s objName
+        impSc <- queryObj s $ last objName
         case trace ("Query explicit object:" ++ show impSc) impSc of
           Just s' -> do
               ds' <- trace ("We try to query for explicit var:" ++ varName) query s' reExplImp pShortest (matchDecl varName) <&> map projTy
@@ -244,11 +261,12 @@ step5 p s = do
   -- wildcard imports
   _ <- step2 scopedProg
   -- Variable declaration phase
-  _ <- step3 scopedProg
+  otherSc <- step3 scopedProg
+  let scopedProg' = zip p otherSc
   -- explicit imports
-  _ <- step4 scopedProg
+  _ <- step4 scopedProg'
   -- Type check the rest
-  concat <$> mapM tcObj scopedProg
+  concat <$> mapM tcObj scopedProg'
   where
     tcObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Type]
     tcObj (ScObject _ _ defs, g) = mapM (`tcScDecl` g) defs
