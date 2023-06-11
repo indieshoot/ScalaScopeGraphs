@@ -10,6 +10,7 @@ import qualified Free.Scope as S (edge, new, sink)
 import Free.Error
 import ScSyntax
 import Debug.Trace
+import Data.Maybe
 
 ----------------------------
 -- Scope Graph Parameters --
@@ -87,12 +88,9 @@ queryObj fromSc toObj = do
 -- Type Checker --
 ------------------
 
-  -- Function to type check Scala expressions
+-- Function to type check Scala expressions
 tcScExp ::
-  (Functor f, Error String < f, Scope Sc Label Decl < f) =>
-  ScExp ->
-  Sc ->
-  Free f Type
+  (Functor f, Error String < f, Scope Sc Label Decl < f) => ScExp -> Sc -> Free f Type
 tcScExp (ScNum _) _ = return NumT
 tcScExp (ScBool _) _ = return BoolT
 tcScExp (ScId x) s = do
@@ -101,7 +99,14 @@ tcScExp (ScId x) s = do
     [] -> err "No matching declarations found - expression"
     [t] -> return t
     _ -> err "BUG: Multiple declarations found" -- cannot happen for STLC
-tcScExp (ScPlus l r) s = tcBinOp l r NumT NumT s
+tcScExp (ScBinOp l op r) s = do
+      case op of 
+        ScAdd -> tcBinOp l r NumT NumT s
+        ScMinus -> tcBinOp l r NumT NumT s
+        ScMult -> tcBinOp l r NumT NumT s
+        ScDiv -> tcBinOp l r NumT NumT s
+        ScEquals -> tcBinOp l r NumT BoolT s
+        ScLessThan -> tcBinOp l r NumT BoolT s
 tcScExp (ScIf cond thenBranch elseBranch) s = do
   ifBool <- tcScExp cond s
   trueBranch <- tcScExp thenBranch s
@@ -110,13 +115,16 @@ tcScExp (ScIf cond thenBranch elseBranch) s = do
     if trueBranch == falseBranch then return trueBranch else err "Branches need the same output type."
   else
     err "There needs to be a boolean condition."
-tcScExp (ScFun (ScParam str strType) body) s = do
-  let newTy = strType
+tcScExp (ScFun params body) s = do
+  -- let paramTypes = map (\(ScParam _ t) -> t) params
+  -- t' <- tcScExp body s
+  -- return $ foldr FunT t' paramTypes
+  let paramTypes = map (\(ScParam _ t) -> t) params
   s' <- new
   edge s' P s
-  sink s' VAR $ Decl str newTy
+  mapM_ (\(ScParam str ty) -> sink s' VAR $ Decl str ty) params
   t' <- tcScExp body s'
-  return $ FunT newTy t'
+  return $ foldr FunT t' paramTypes
 tcScExp (ScApp func app) s = do
   f' <- tcScExp func s
   a' <- tcScExp app s
@@ -136,26 +144,16 @@ tcBinOp l r inp out s = do
   else
     err "Error when type checking a binary operator."
 
-
 -- type check declarations
-tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Type
+tcScDecl :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f [Type]
 tcScDecl (ScVal (ScParam _ t) expr) s = do
-    -- sink s VAR $ Decl name t
     t' <- trace ("We type check the expr:" ++ show expr) tcScExp expr s
-    if t == t' then trace ("The resulted type checking is: " ++ show t') return t' else err "Type missmatch in val."
+    if t == t' then trace ("The resulted type checking is: " ++ show t') return [t'] else err "Type missmatch in val."
 tcScDecl (ScDef name t expr) s = do
     t' <- trace ("We type check the expr" ++ show expr ++ " in method: " ++ name ) tcScExp expr s
-    if t == t' then trace ("The resulted type checking of method is: " ++ show t') return t' else err "Type missmatch in def."
-tcScDecl (ScObject name _ defs) s = do
-      -- -- Create new scope for the object
-      -- sObjDef <- new
-      -- -- Add edge between object scope and parent scope.
-      -- edge sObjDef P s
-      -- -- Add object declaration
-      -- sink s OBJ $ ObjDecl name sObjDef
-      types <- mapM (`tcScDecl` s) defs
-      -- types <- step5 defs s
-      return (ObjT name types) 
+    if t == t' then trace ("The resulted type checking of method is: " ++ show t') return [t'] else err "Type missmatch in def."
+tcScDecl o@(ScObject {}) s = do
+      step5 [o] s
 
 
 --------------------------- FIRST IDEA --------------------------------------------
@@ -171,9 +169,9 @@ tcScDecl (ScObject name _ defs) s = do
 
 -- Step 1: allocate objects scopes
 step1 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Sc]
-step1 p s = mapM (`scopeObj` s) p
+step1 p s = catMaybes <$> mapM (`scopeObj` s) p
 
-scopeObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Sc
+scopeObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f (Maybe Sc)
 scopeObj (ScObject name _ _) s = do 
       -- Create new scope for the object
       sObjDef <- new
@@ -181,7 +179,8 @@ scopeObj (ScObject name _ _) s = do
       edge sObjDef P s
       -- Add object declaration
       sink s OBJ $ ObjDecl name sObjDef
-      return sObjDef
+      return (Just sObjDef)
+scopeObj _ _ = return Nothing
 
 
 -- Step 2: add wildcard import edges to scope graph 
@@ -213,28 +212,21 @@ declareVar :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -
 declareVar (ScVal (ScParam name t) _) s = do
     sink s VAR $ Decl name t
     return s
-declareVar (ScDef name t _) s = do
+declareVar (ScDef name returnT _) s = do
     s' <- new
     edge s' P s
     edge s DEF s'
-    sink s' VAR $ Decl name t
+    sink s' VAR $ Decl name returnT
+    -- mapM_ (\(ScParam str ty) -> sink s' VAR $ Decl str ty) params
     return s'
-declareVar (ScObject name _ _) s = do 
-    -- Create new scope for the object
-    sObjDef <- new
-    -- Add edge between object scope and parent scope.
-    edge sObjDef P s
-    -- Add object declaration
-    sink s OBJ $ ObjDecl name sObjDef
-    return sObjDef
-
+declareVar (ScObject {}) s = return s
 
 -- Step 4: copy imported names to the importing scopes 
 step4 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
 step4 = mapM_ impResExp
 
 impResExp :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f ()
-impResExp (ScObject _ imps _, s) = mapM_ (`explImpt` s) imps -- Import individually.
+impResExp (ScObject _ imps _, s) = mapM_ (`explImpt` s) imps
 
 explImpt :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Imp -> Sc -> Free f ()
 explImpt (ScEImp objName varName) s = do
@@ -269,7 +261,7 @@ step5 p s = do
   concat <$> mapM tcObj scopedProg'
   where
     tcObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => (ScDecl, Sc) -> Free f [Type]
-    tcObj (ScObject _ _ defs, g) = mapM (`tcScDecl` g) defs
+    tcObj (ScObject _ _ defs, g) = concat <$> mapM (`tcScDecl` g) defs
   
 
 ----------------------------------------RUN METHODS---------------------------------------------------
@@ -286,17 +278,4 @@ runTC e = un
         $ handle hErr
         $ handle_ hScope (tcScExp e 0) emptyGraph
 
--- tcScExp (ScObj s) _ = return $ ObjT s
-    -- case op of 
-    -- ScAdd -> tcBinOp l r intT intT s
-    -- ScMinus -> tcBinOp l r intT intT s
-    -- ScMult -> tcBinOp l r intT intT s
-    -- ScDiv -> tcBinOp l r intT intT s
-    -- ScEquals -> tcBinOp l r intT boolT s
-    -- ScLessThan -> tcBinOp l r intT boolT s
-
-    -- runTCDecl :: ScDecl -> Either String (Type, Graph Label Decl)
--- runTCDecl decl = un 
---         $ handle hErr 
---         $ handle_ hScope (tcScDecl decl 0) emptyGraph
 

@@ -3,7 +3,6 @@ module Main where
 import Test.HUnit
 
 import Data.Either (isRight)
-import ATermParser
 import TypeChecker (Label, Decl, runTC, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
@@ -189,35 +188,7 @@ testNestedObj = do
                     ] 
                ]
   print $ snd t
-  assertEqual "Incorrect types" [NumT, ObjT "P" [NumT]] $ fst t 
-
--- qualified reference to value: make pass
--- object A {
---   object B {
---     val x : Int = 42;
---   };
--- };
-
--- object O {
---   val x : Int = A.B.x;
--- };
-
-testQualifiedRef :: IO ()
-testQualifiedRef = do
-  t <- runTCPh [ScObject "A" []
-                    [ 
-                      ScObject "B" []
-                        [
-                          ScVal (ScParam "x" NumT) (ScNum 42)
-                        ]
-                    ] , 
-                ScObject "O" [ScEImp ["A", "B"] "x"]
-                    [ 
-                      ScVal (ScParam "x" NumT) (ScNum 3)
-                    ] 
-                 ]
-  print $ snd t
-  assertEqual "Incorrect types" [ObjT "B" [NumT], NumT] $ fst t 
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t 
 
 -- object A {
 --   def A: Int = A;
@@ -227,7 +198,7 @@ testSameNameDef :: IO ()
 testSameNameDef = do
   t <- runTCPh [ScObject "x" []
                     [
-                      ScDef "x" NumT (ScId "x")
+                      ScDef "x"  NumT (ScId "x")
                       -- ScVal (ScParam "x" NumT) (ScId "x")
                     ] 
                ]
@@ -265,21 +236,50 @@ testForwardRef = do
   print $ snd t
   assertEqual "Incorrect types" [NumT, NumT] $ fst t 
 
+-- qualified reference to value: make pass
+-- object A {
+--   object B {
+--     val x : Int = 42;
+--   };
+-- };
+
+-- object O {
+--   val x : Int = A.B.x;
+-- };
+
+testQualifiedRef :: IO ()
+testQualifiedRef = do
+  t <- runTCPh [ScObject "A" []
+                    [ 
+                      ScObject "B" []
+                        [
+                          ScVal (ScParam "x" NumT) (ScNum 42)
+                        ]
+                    ] , 
+                ScObject "O" [ScEImp ["A", "B"] "x"]
+                    [ 
+                      ScVal (ScParam "x" NumT) (ScNum 3)
+                    ] 
+                 ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t 
+
+
 tests :: Test
 tests = TestList
     [ "test1" ~: test1 
-    -- , "test2" ~: test2 
-    -- , "testEImp" ~: testEImp
-    -- , "testWImp" ~: testWImp
-    -- , "testDoubleImport" ~: testDoubleImports
-    -- , "testNameClash" ~: testNameClash
-    -- , "testMutualDefs" ~: testMutualDefs
-    -- , "testRecursiveDefs" ~: testRecDefs
-    -- , "testNestedObjects" ~: testNestedObj
-    , "testMultipleExplicitImp" ~: testQualifiedRef
-    -- , "testAllSameName" ~: testSameNameDef
-    -- , "testDuplicateValue" ~: testDuplicateVal
-    -- , "testForwardReference"  ~: testForwardRef
+    , "test2" ~: test2 
+    , "testEImp" ~: testEImp
+    , "testWImp" ~: testWImp
+    , "testDoubleImport" ~: testDoubleImports
+    , "testNameClash" ~: testNameClash
+    , "testMutualDefs" ~: testMutualDefs
+    , "testRecursiveDefs" ~: testRecDefs
+    , "testNestedObjects" ~: testNestedObj
+    , "testAllSameName" ~: testSameNameDef
+    , "testDuplicateValue" ~: testDuplicateVal
+    , "testForwardReference"  ~: testForwardRef
+    --  , "testMultipleExplicitImp" ~: testQualifiedRef
     ]
 
 main :: IO ()
