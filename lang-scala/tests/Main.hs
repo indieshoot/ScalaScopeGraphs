@@ -70,7 +70,7 @@ testWImp = do
                       ScVal (ScParam "y" BoolT) (ScBool True) , 
                       ScVal (ScParam "x" NumT) (ScNum 5) 
                     ] , 
-                ScObject "B" [ScWImp "A"]
+                ScObject "B" [ScWImp ["A"]]
                     [ 
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
@@ -90,7 +90,7 @@ testWImp = do
 
 testDoubleImports :: IO ()
 testDoubleImports = do
-  t <- runTCPh [ScObject "A" [ScWImp "B"]
+  t <- runTCPh [ScObject "A" [ScWImp ["B"]]
                     [ 
                       ScVal (ScParam "x" NumT) (ScId "y") 
                     ] , 
@@ -128,7 +128,7 @@ testNameClash = do
                     [ 
                       ScVal (ScParam "x" BoolT) (ScBool True)
                     ] ,
-                ScObject "C" [ScWImp "B", ScEImp ["A"] "x"]
+                ScObject "C" [ScWImp ["B"], ScEImp ["A"] "x"]
                     [ 
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
@@ -244,7 +244,7 @@ testForwardRef = do
 -- };
 
 -- object O {
---   val x : Int = A.B.x;
+--   val y : Int = A.B.x;
 -- };
 
 testQualifiedRef :: IO ()
@@ -258,7 +258,24 @@ testQualifiedRef = do
                     ] , 
                 ScObject "O" [ScEImp ["A", "B"] "x"]
                     [ 
-                      ScVal (ScParam "x" NumT) (ScNum 3)
+                      ScVal (ScParam "y" NumT) (ScId "x")
+                    ] 
+                 ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t 
+
+testQualifiedRef2 :: IO ()
+testQualifiedRef2 = do
+  t <- runTCPh [ScObject "A" []
+                    [ 
+                      ScObject "B" []
+                        [
+                          ScVal (ScParam "x" NumT) (ScNum 42)
+                        ]
+                    ] , 
+                ScObject "O" [ScWImp ["A", "B"]]
+                    [ 
+                      ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                  ]
   print $ snd t
@@ -279,7 +296,8 @@ tests = TestList
     , "testAllSameName" ~: testSameNameDef
     , "testDuplicateValue" ~: testDuplicateVal
     , "testForwardReference"  ~: testForwardRef
-    --  , "testMultipleExplicitImp" ~: testQualifiedRef
+    , "testMultipleExplicitImp" ~: testQualifiedRef
+    , "testMultipleWildcardImp" ~: testQualifiedRef2
     ]
 
 main :: IO ()

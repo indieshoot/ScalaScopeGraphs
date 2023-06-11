@@ -11,6 +11,7 @@ import Free.Error
 import ScSyntax
 import Debug.Trace
 import Data.Maybe
+import Data.List
 
 ----------------------------
 -- Scope Graph Parameters --
@@ -55,16 +56,12 @@ reExplImp :: RE Label
 reExplImp = Dot (Star $ Pipe (Atom P) (Atom EI)) $ Atom VAR
 
 -- P*OBJ
-reObj :: RE Label
-reObj = Dot (Star $ Atom P) $ Atom OBJ
-
--- P*OBJ
 reDef :: RE Label
 reDef = Dot  (Star (Atom P))  $ Atom VAR
 
 -- Regular expression
 reImpResVar :: RE Label
-reImpResVar = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom DEF)) (Pipe Empty $ Atom WI)) $ Pipe (Atom VAR) (Atom EI)
+reImpResVar = Dot (Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom DEF)) (Pipe Empty $ Atom WI)) $ Pipe (Atom EI) (Atom VAR)
 
 -- Path order based on length
 pShortest :: PathOrder Label Decl
@@ -75,10 +72,14 @@ matchDecl :: String -> Decl -> Bool
 matchDecl x (Decl x' _) = x == x'
 matchDecl x (ObjDecl x' _) = x == x'
 
+-- P*OBJ
+reObj :: RE Label
+reObj = Dot (Star $ Atom P) $ Star $ Atom OBJ
+
 queryObj :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Sc -> String -> Free f (Maybe Sc)
 queryObj fromSc toObj = do
-    res <- trace ("We try to query for" ++ toObj) query fromSc reObj pShortest $ matchDecl toObj
-    case trace ("Query:" ++ show res) res of
+    res <- trace ("We try to query for OBJECT: " ++ toObj ++ " from scope: " ++ show fromSc) query fromSc reObj pShortest $ matchDecl toObj
+    case trace ("Queried object is: " ++ show res) res of
       [] -> return Nothing
       [ObjDecl _ g'] -> return $ Just g'
       _ -> err $ "There are multiple occurances of " ++ toObj
@@ -152,8 +153,8 @@ tcScDecl (ScVal (ScParam _ t) expr) s = do
 tcScDecl (ScDef name t expr) s = do
     t' <- trace ("We type check the expr" ++ show expr ++ " in method: " ++ name ) tcScExp expr s
     if t == t' then trace ("The resulted type checking of method is: " ++ show t') return [t'] else err "Type missmatch in def."
-tcScDecl o@(ScObject {}) s = do
-      step5 [o] s
+tcScDecl (ScObject _ _ defs) s = do
+      concat <$> mapM (`tcScDecl` s) defs
 
 
 --------------------------- FIRST IDEA --------------------------------------------
@@ -178,7 +179,7 @@ scopeObj (ScObject name _ _) s = do
       -- Add edge between object scope and parent scope.
       edge sObjDef P s
       -- Add object declaration
-      sink s OBJ $ ObjDecl name sObjDef
+      trace ("Drawing declaration for OBJECT: " ++ name ++ " with scope: " ++ show sObjDef) sink s OBJ $ ObjDecl name sObjDef
       return (Just sObjDef)
 scopeObj _ _ = return Nothing
 
@@ -193,13 +194,12 @@ impResAbs (ScObject _ imps _, s) = mapM_ (`wildImpt` s) imps -- Import individua
 wildImpt :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Imp -> Sc -> Free f ()
 wildImpt (ScEImp _ _) _ = return ()
 wildImpt (ScWImp objName) s = do 
-      impSc <- queryObj s objName
+      impSc <- queryObjChain s objName
       case trace ("Query wildcard import:" ++ show impSc) impSc of
         Just s' -> do
           -- Draw an edge from s to the imported s'.
           trace ("Drawing edge from:" ++ show s ++ "to: " ++ show s') edge s WI s' 
-        _ -> err $ "Object " ++ objName ++ "'does not exist."
-
+        _ -> err $ "Object " ++ intercalate "." objName ++ " does not exist."
 
 -- Step 3: Variable declaration phase
 step3 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f [Sc]
@@ -210,7 +210,7 @@ varDecl (ScObject _ _ defs, s) = mapM (`declareVar` s) defs
 
 declareVar :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -> Sc -> Free f Sc
 declareVar (ScVal (ScParam name t) _) s = do
-    sink s VAR $ Decl name t
+    trace ("Drawing declaration for VAR: " ++ name ++ " with scope: " ++ show s) sink s VAR $ Decl name t
     return s
 declareVar (ScDef name returnT _) s = do
     s' <- new
@@ -219,7 +219,14 @@ declareVar (ScDef name returnT _) s = do
     sink s' VAR $ Decl name returnT
     -- mapM_ (\(ScParam str ty) -> sink s' VAR $ Decl str ty) params
     return s'
-declareVar (ScObject {}) s = return s
+declareVar (ScObject name _ defs) s = do
+      sObjDef <- new
+      -- Add edge between object scope and parent scope.
+      edge sObjDef P s
+      -- Add object declaration
+      trace ("Drawing declaration for OBJECT: " ++ name ++ " with scope: " ++ show sObjDef) sink s OBJ $ ObjDecl name sObjDef
+      mapM_ (`declareVar` sObjDef) defs
+      return s
 
 -- Step 4: copy imported names to the importing scopes 
 step4 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
@@ -230,19 +237,25 @@ impResExp (ScObject _ imps _, s) = mapM_ (`explImpt` s) imps
 
 explImpt :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Imp -> Sc -> Free f ()
 explImpt (ScEImp objName varName) s = do
-        impSc <- queryObj s $ last objName
-        case trace ("Query explicit object:" ++ show impSc) impSc of
-          Just s' -> do
-              ds' <- trace ("We try to query for explicit var:" ++ varName) query s' reExplImp pShortest (matchDecl varName) <&> map projTy
-              case trace ("Query explicit var:" ++ show ds') ds' of
-                [] -> err "No matching declarations found - explicit import"
-                [t] -> do
-                -- copy name in our scope
-                  sink s EI $ Decl varName t
-                _ -> err "BUG: Multiple declarations found - import res"
-          Nothing -> err "Import scope not found" 
+  impSc <- queryObjChain s objName
+  case trace ("Query explicit object:" ++ show impSc) impSc of
+    Just s' -> do
+      ds' <- trace ("We try to query for explicit var:" ++ varName) query s' reExplImp pShortest (matchDecl varName) <&> map projTy
+      case ds' of
+        [] -> err "No matching declarations found - explicit import"
+        [t] -> sink s EI $ Decl varName t
+        _ -> err "Multiple matching declarations found - explicit import"
+    Nothing -> err $ "Object " ++ intercalate "." objName ++ " does not exist."
 explImpt (ScWImp _) _ = return ()
 
+
+queryObjChain :: (Functor f, Error String < f, Scope Sc Label Decl < f) => Sc -> [ObjName] -> Free f (Maybe Sc)
+queryObjChain s [] = return (Just s)
+queryObjChain s (objName : rest) = do
+  impSc <- trace ("We try to query for child object: " ++ objName ++ " with scope: " ++ show s) queryObj s objName
+  case impSc of
+    Just s' -> trace ("Child scope is: " ++ show s') queryObjChain s' rest
+    Nothing -> return Nothing
 
 -- Step 5: type check
 step5 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg -> Sc -> Free f [Type]
@@ -250,11 +263,11 @@ step5 p s = do
   -- allocate object scopes
   objSc <- step1 p s
   let scopedProg = zip p objSc
-  -- wildcard imports
-  _ <- step2 scopedProg
   -- Variable declaration phase
   otherSc <- step3 scopedProg
   let scopedProg' = zip p otherSc
+    -- wildcard imports
+  _ <- step2 scopedProg
   -- explicit imports
   _ <- step4 scopedProg'
   -- Type check the rest

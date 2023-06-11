@@ -40,7 +40,7 @@ type VarName = String
 
 data Imp 
   = ScEImp [ObjName] VarName
-  | ScWImp ObjName
+  | ScWImp [ObjName]
   deriving (Eq, Show)
 
 data ScExp 
