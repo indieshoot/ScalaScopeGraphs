@@ -5,11 +5,14 @@
 
 module ScSyntax where
 import Free.Scope (Sc)
+import Data.List
 
 data Type
   = NumT
   | BoolT
-  | FunT Type Type
+  | FunT [Type] Type
+  | QRefT [ObjName] VarName
+  | TyRef String
   | Unit -- unit type for void methods
   deriving Eq
 
@@ -17,6 +20,7 @@ instance Show Type where
   show NumT = "num"
   show BoolT = "bool"
   show (FunT ti to) = "(" ++ show ti ++ " -> " ++ show to ++ ")"
+  show (QRefT objs varName) = intercalate "." objs ++ "." ++ varName
   show _ = "undefined"
 
 
@@ -28,13 +32,13 @@ type ScProg' = [(ScDecl, Sc)]
 data ScDecl
   = ScVal ScParam ScExp 
   | ScType String Type
-  | ScDef String Type ScExp 
-  -- | ScDef String [ScParam] Type ScExp [ScDecl]
+  | ScDef String [[ScParam]] RetTy [ScDecl] ScExp -- we address the multi-clause/multi-params 
   | ScObject String [Imp] [ScDecl] 
   deriving (Eq, Show)
 
 data ScParam = ScParam String Type deriving (Eq, Show)
 
+type RetTy = Type
 type ObjName = String
 type VarName = String
 
@@ -48,9 +52,9 @@ data ScExp
   | ScNum Int
   | ScBool Bool 
   | ScBinOp ScExp ScOp ScExp
-  | ScIf ScExp ScExp ScExp
-  | ScFun [ScParam] ScExp    
-  | ScApp ScExp ScExp      
+  | ScIf ScExp ScExp ScExp   
+  | ScApp ScExp [ScExp]   
+  | ScQRef [ObjName] VarName  -- qualified references
   deriving (Eq, Show)
 
 data ScOp
