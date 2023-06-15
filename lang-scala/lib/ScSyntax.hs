@@ -21,6 +21,7 @@ instance Show Type where
   show BoolT = "bool"
   show (FunT ti to) = "(" ++ show ti ++ " -> " ++ show to ++ ")"
   show (QRefT objs varName) = intercalate "." objs ++ "." ++ varName
+  show (TyRef name) = name
   show _ = "undefined"
 
 
@@ -32,7 +33,7 @@ type ScProg' = [(ScDecl, Sc)]
 data ScDecl
   = ScVal ScParam ScExp 
   | ScType String Type
-  | ScDef String [[ScParam]] RetTy [ScDecl] ScExp -- we address the multi-clause/multi-params 
+  | ScDef String [[ScParam]] RetTy DefBody -- we address the multi-clause/multi-params 
   | ScObject String [Imp] [ScDecl] 
   deriving (Eq, Show)
 
@@ -41,6 +42,10 @@ data ScParam = ScParam String Type deriving (Eq, Show)
 type RetTy = Type
 type ObjName = String
 type VarName = String
+
+data DefBody = Body [ScDecl] ScExp  deriving (Eq, Show)
+
+data LexicalSc = LSc [ScDecl] Sc deriving (Eq, Show)
 
 data Imp 
   = ScEImp [ObjName] VarName
@@ -55,6 +60,7 @@ data ScExp
   | ScIf ScExp ScExp ScExp   
   | ScApp ScExp [ScExp]   
   | ScQRef [ObjName] VarName  -- qualified references
+  | ScUnit -- to declare void methods
   deriving (Eq, Show)
 
 data ScOp

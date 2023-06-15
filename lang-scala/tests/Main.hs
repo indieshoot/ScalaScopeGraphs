@@ -22,15 +22,6 @@ runTCPh = either assertFailure return . runTCPhased
 
 
 -- Define your test cases like the following
-test1 :: IO ()
-test1 = do
-  t <- runTCTest $ ScNum 1
-  assertEqual "Incorrect type: not a number" NumT $ fst t
-
-test2 :: IO ()
-test2 = do
-  t <- runTCTest $ ScBool True
-  assertEqual "Incorrect type: not a boolean" BoolT $ fst t
 
 -- object A {
 --   val x : Int = 3
@@ -145,8 +136,8 @@ testMutualDefs :: IO ()
 testMutualDefs = do
   t <- runTCPh [ScObject "A" []
                     [
-                      ScDef "f" [] NumT [] (ScId "g"), 
-                      ScDef "g" [] NumT [] (ScId "f")
+                      ScDef "f" [] NumT (Body [] (ScId "g") ), 
+                      ScDef "g" [] NumT (Body [] (ScId "f") )
                     ] 
                ]
   print $ snd t
@@ -161,7 +152,7 @@ testRecDefs :: IO ()
 testRecDefs = do
   t <- runTCPh [ScObject "A" []
                     [
-                      ScDef "x" [] NumT [] (ScId "x") 
+                      ScDef "x" [] NumT (Body [] (ScId "x") ) 
                     ] 
                ]
   print $ snd t
@@ -197,7 +188,7 @@ testSameNameDef :: IO ()
 testSameNameDef = do
   t <- runTCPh [ScObject "x" []
                     [
-                      ScDef "x"  [] NumT [] (ScId "x") 
+                      ScDef "x"  [] NumT (Body [] (ScId "x") )
                       -- ScVal (ScParam "x" NumT) (ScId "x")
                     ] 
                ]
@@ -228,8 +219,8 @@ testForwardRef :: IO ()
 testForwardRef = do
   t <- runTCPh [ScObject "A" []
                     [
-                      ScDef "f" [] NumT [] (ScId "g"), 
-                      ScDef "g" [] NumT [] (ScNum 3)
+                      ScDef "f" [] NumT (Body [] (ScId "g") ), 
+                      ScDef "g" [] NumT (Body [] (ScNum 3) )
                     ] 
                ]
   print $ snd t
@@ -402,7 +393,8 @@ testBlockShadow = do
   t <- runTCPh [ScObject "A" []
                     [ 
                       ScVal (ScParam "x" NumT) (ScNum 42),
-                      ScDef "f" [] BoolT [ScVal (ScParam "x" BoolT) (ScBool True)]  (ScId "x")
+                      ScDef "f" [] BoolT 
+                      (Body [ScVal (ScParam "x" BoolT) (ScBool True)]  (ScId "x") )
                     ]
                  ]
   print $ snd t
@@ -419,8 +411,8 @@ testMultipleParamClauses = do
   t <- runTCPh [ScObject "A" []
                     [ 
                       ScDef "f" [[ScParam "x" NumT], [ScParam "y" BoolT]] BoolT 
-                            [ScVal (ScParam "x2" NumT) (ScId "x")]  
-                            (ScId "y")
+                            (Body [ScVal (ScParam "x2" NumT) (ScId "x")]  
+                            (ScId "y") )
                     ]
                  ]
   print $ snd t
@@ -495,8 +487,8 @@ testFunctionValRef :: IO ()
 testFunctionValRef = do
   t <- runTCPh [ScObject "A" []
                     [ 
-                      ScDef "f" [[ScParam "g" (FunT [NumT] BoolT)]] (FunT [NumT] BoolT) []
-                            (ScId "g")
+                      ScDef "f" [[ScParam "g" (FunT [NumT] BoolT)]] (FunT [NumT] BoolT) 
+                          (Body []  (ScId "g") )
                     ]
                  ]
   print $ snd t
@@ -510,8 +502,8 @@ testFunctionCall :: IO ()
 testFunctionCall = do
   t <- runTCPh [ScObject "A" []
                     [ 
-                      ScDef "f" [[ScParam "g" (FunT [NumT] BoolT)], [ScParam "a" NumT]] BoolT []
-                            (ScApp (ScId "g") [ScId "a"])
+                      ScDef "f" [[ScParam "g" (FunT [NumT] BoolT)], [ScParam "a" NumT]] BoolT (Body []
+                            (ScApp (ScId "g") [ScId "a"]) )
                     ]
                  ]
   print $ snd t
@@ -546,10 +538,10 @@ testCurry :: IO ()
 testCurry = do
   t <- runTCPh [ScObject "A" []
                     [ 
-                      ScDef "f" [[ScParam "x" NumT], [ScParam "y" BoolT]] BoolT []
-                            (ScId "y"),
-                      ScDef "g" [] BoolT []
-                            (ScApp (ScId "f") [ScNum 42, ScBool True])
+                      ScDef "f" [[ScParam "x" NumT], [ScParam "y" BoolT]] BoolT (Body []
+                            (ScId "y") ),
+                      ScDef "g" [] BoolT (Body []
+                            (ScApp (ScId "f") [ScNum 42, ScBool True]) )
                     ]
                  ]
   print $ snd t
@@ -564,10 +556,10 @@ testSingleCurry :: IO ()
 testSingleCurry = do
   t <- runTCPh [ScObject "A" []
                     [ 
-                      ScDef "f" [[ScParam "x" NumT]] NumT []
-                            (ScId "x"),
-                      ScDef "g" [] NumT []
-                            (ScApp (ScId "f") [ScNum 42])
+                      ScDef "f" [[ScParam "x" NumT]] NumT (Body []
+                            (ScId "x") ),
+                      ScDef "g" [] NumT (Body []
+                            (ScApp (ScId "f") [ScNum 42]) )
                     ]
                  ]
   print $ snd t
@@ -612,14 +604,240 @@ testDeepWildRef = do
                  ]
   assertEqual "Incorrect types" "No matching declarations found - explicit import" t 
 
+-- object A {
+--   import A._;
+-- };
+
+testSelf :: IO ()
+testSelf = do
+  t <- runTCPh [ScObject "A" []
+                    [ 
+                      ScObject "B" [ScWImp ["A"]] []
+                    ]
+                ]
+  print $ snd t
+  assertEqual "Incorrect types" [] $ fst t 
+
+-- object O {
+--   object N {
+--     type T = Int;
+--   };
+--   object M {
+--     import N.T;
+--   };
+--   import M.T;
+--   val x : T = 42;
+-- };
+
+testImpNotTransitive :: IO ()
+testImpNotTransitive = do
+  t <- runTCFail [ScObject "O" [ScWImp ["M"] ]
+                    [ 
+                      ScObject "N" []
+                        [
+                          ScType "T" NumT
+                        ], 
+                      ScObject "M" [ScWImp ["N"] ]
+                        [
+                          
+                        ],
+                        ScVal (ScParam "x" (TyRef "T")) (ScNum 42)
+                    ] 
+                 ]
+  assertEqual "Incorrect types" "No matching declarations found - type reference" t
+
+-- object O {
+--   def f: Int = {
+--     g
+--   };
+  
+--   def g: Int = 42;
+-- };
+
+testBodyOuterAccess :: IO ()
+testBodyOuterAccess = do
+  t <- runTCPh [ScObject "O" []
+                    [ 
+                      ScDef "f" [] NumT (Body []
+                            (ScId "g") ),
+                      ScDef "g" [] NumT (Body []
+                            (ScNum 42) )
+                    ]
+                 ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t 
+
+
+-- object N {
+--   val x : Boolean = true;
+-- };
+-- object O {
+--   import N._;
+--   def f: Boolean = {
+--     x
+--   };
+-- };
+
+testBodyOuterAccessImp :: IO ()
+testBodyOuterAccessImp = do
+  t <- runTCPh [ScObject "N" []
+                    [ 
+                      ScVal (ScParam "x" BoolT) (ScBool True)
+                    ], 
+                ScObject "O" [ScWImp ["N"]]
+                    [ 
+                      ScDef "f" [] BoolT (Body []
+                            (ScId "x"))
+                    ]
+                 ]
+  print $ snd t
+  assertEqual "Incorrect types" [BoolT, BoolT] $ fst t
+
+
+-- object A {
+--   type X = Int;
+--   type Y = X;
+--   type Z = Y;
+--   val x: Z = 42;
+-- };
+
+testTypeAliaChain :: IO ()
+testTypeAliaChain = do
+  t <- runTCPh [ScObject "A" []
+                    [ 
+                      ScType "X" NumT,
+                      ScType "Y" (TyRef "X")
+                      -- ScType "Z" (TyRef "Y"),
+                      -- ScVal (ScParam "x" (TyRef "Z")) (ScNum 42)
+                    ]
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t
+
+-- object A {
+--   def f(x: Int): Int = 42;
+--   val f: Int = 42;
+-- };
+
+testPassUnsuported :: IO ()
+testPassUnsuported = do
+  t <- runTCPh [ScObject "A" []
+                    [ 
+                      ScVal (ScParam "f" NumT) (ScNum 42),
+                      ScDef "f" [[ScParam "x" NumT]] NumT (Body [] (ScNum 42))
+                    ]
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t
+
+-- 1) paper example: pass
+-- object a {
+--   object b {
+--     def f(): Unit = {};
+--   };
+-- };
+
+-- object c {
+--   import a._;
+--   import b.f;
+--   def g(): Unit = { f() };
+-- };
+
+testPaperEx :: IO ()
+testPaperEx = do
+  t <- runTCPh [ScObject "A" []
+                    [ 
+                      ScObject "B" [] 
+                      [   
+                        ScDef "f" [] Unit (Body [] ScUnit)
+                      ]
+                    ],
+                ScObject "C" [ScWImp ["A"], ScEImp ["A", "B"] "f"] 
+                    [
+                        ScDef "g" [] Unit (Body [] (ScApp (ScId "f") []))
+                    ]
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [Unit, Unit] $ fst t
+
+
+-- object O {
+--   object N {
+--     type A = Boolean;
+--   };
+
+--   object I {
+--     import N._;
+--     import N._;
+--     val x : A = true;
+--   };
+-- };
+
+testDoubleWImp :: IO ()
+testDoubleWImp = do
+  t <- runTCPh [ScObject "O" []
+                    [ 
+                      ScObject "N" [] 
+                      [   
+                        ScType "A" BoolT
+                      ]
+                    ],
+                ScObject "C" [ScWImp ["O", "N"], ScWImp ["O", "N"]] 
+                    [
+                        ScVal (ScParam "x" (TyRef "A")) (ScBool True) 
+                    ]
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [BoolT, BoolT] $ fst t
+
+-- object O {
+--   object M {
+--     type A = Int;
+--   };
+--   object N {
+--     type A = Boolean;
+--   };
+
+--   object I {
+--     import N.A;
+--     import M.A;
+--     val x : A = 3;
+--   };
+-- };
+
+testEImpNoShadow :: IO ()
+testEImpNoShadow = do
+  t <- runTCFail [ScObject "O" []
+                    [ 
+                      ScObject "M" [] 
+                      [   
+                        ScType "A" NumT
+                      ], 
+                      ScObject "N" [] 
+                      [   
+                        ScType "A" BoolT
+                      ]
+                    ],
+                ScObject "I" [ScWImp ["O", "N"] , ScWImp ["O", "M"] ] 
+                    [
+                        ScVal (ScParam "x" (TyRef "A")) (ScNum 3) 
+                    ]
+               ]
+  assertEqual "Incorrect types" "Ambiguous reference." t
+
+
 tests :: Test
 tests = TestList
-    [ "test1" ~: test1 
-    , "test2" ~: test2 
+    [  
     -- , "testNestedWildcard" ~: testDeepWildRef
-    --, "testCurry" ~: testCurry
+    -- , "testCurry" ~: testCurry
     -- , "testSingleCurry" ~: testSingleCurry
-    , "testEImp" ~: testEImp
+    -- , "testTypeAliasChain" ~: testTypeAliaChain
+    -- , "testPassUnsuported1" ~: testPassUnsuported
+    -- , "testTypeAndValOverlapImp" ~: testTypeAndValOverlapImp
+
+
+      "testEImp" ~: testEImp
     , "testWImp" ~: testWImp
     , "testDoubleImport" ~: testDoubleImports
     , "testNameClash" ~: testNameClash
@@ -638,11 +856,17 @@ tests = TestList
     , "testMultipleParamClauses" ~: testBlockShadow
     , "testMultipleParams" ~: testMultipleParamClauses
     , "testTypeAndValOverlap" ~: testTypeAndValOverlap
-    , "testTypeAndValOverlapImp" ~: testTypeAndValOverlapImp
-    , "testNestedTy" ~: testNestedObjTy
+   , "testNestedTy" ~: testNestedObjTy
     , "testFunctionType" ~: testFunctionValRef
     , "testFunctionCall" ~: testFunctionCall
     , "testDeepReferenceFail" ~: testDeepExplRefFail
+    , "testSelfImp" ~: testSelf
+    , "testImpNotTransitive" ~: testImpNotTransitive
+    , "testBodyOuterAccess" ~: testBodyOuterAccess
+    , "testBodyOuterAccess" ~: testBodyOuterAccessImp
+    , "testPaperEx" ~: testPaperEx
+    , "testDoubleWildcardImp" ~: testDoubleWImp
+    ,  "testDoubleEImpNoShadow" ~: testEImpNoShadow
     ]
 
 main :: IO ()

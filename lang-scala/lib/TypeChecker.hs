@@ -55,10 +55,10 @@ sink = S.sink @_ @Label @Decl
 
 -- P*VAR
 reExplImp :: RE Label
-reExplImp =  Atom VAR
+reExplImp =  Pipe (Atom VAR) (Atom TY)
 
 reTy :: RE Label
-reTy = Dot (Star $ Atom P) $ Pipe (Atom TY) (Atom EI)
+reTy = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Pipe (Atom EI) (Atom TY) 
 
 -- Regular expression P*WI?EIVAR
 reImpResVar :: RE Label
@@ -125,6 +125,7 @@ tcScExp (ScApp func args) s = do
       if argTypes == a'
         then return retType
         else err $ "Expected arguments of types '" ++ show argTypes ++ "', got '" ++ show (map typeOf a') ++ "'"
+    Unit -> return Unit
     _ -> err "Not a function."
 tcScExp (ScQRef objs varName) s = do 
   impSc <- queryObjChain s objs
@@ -136,6 +137,7 @@ tcScExp (ScQRef objs varName) s = do
         [t] -> return t
         _ -> err "Multiple matching declarations found - explicit import"
     Nothing -> err $ "Object " ++ intercalate "." objs ++ " does not exist."
+tcScExp ScUnit _ = return Unit
 
 
 -- type check binary operators
@@ -168,11 +170,14 @@ tcScDecl (ScVal (ScParam _ ty) expr) s = do
             ds' <- trace ("We try to query for TYPE:" ++ varName) query s reTy pShortest (matchDecl varName) <&> map projTy
             case ds' of
               [] -> err "No matching declarations found - type reference"
-              [t] -> return [t]
+              [t] -> do 
+                t' <- trace ("We type check the expr:" ++ show expr) tcScExp expr s
+                if t' == t then return [t] else err "The types do not match."
+              _  -> err "Ambiguous reference."
       _ -> do 
        t' <- trace ("We type check the expr:" ++ show expr) tcScExp expr s
        if ty == t' then trace ("The resulted type checking is: " ++ show t') return [t'] else err $ "Type-checked type: " ++ show t' ++ " vs. actual type: " ++ show ty
-tcScDecl (ScDef name paramLists t decls expr) s = do
+tcScDecl (ScDef name _ t (Body decls expr)) s = do
     t' <- trace ("We type check the expr" ++ show expr ++ " in method: " ++ name ++ " with scope: " ++ show s) tcScExp expr s
     mapM_ (`tcScDecl` s) decls
     if t == t' then trace ("The resulted type checking of method is: " ++ show t') return [t'] else err $ "Type missmatch in def with expected: " ++ show t' ++ " vs. got: " ++ show t
@@ -185,7 +190,7 @@ tcScDecl (ScType _ ty) s = do
         case trace ("Query explicit object:" ++ show impSc) impSc of
           Just s' -> do
             ds' <- trace ("We try to query for TYPE:" ++ varName) query s' reTy pShortest (matchDecl varName) <&> map projTy
-            case ds' of
+            case trace ("TYPE IS: " ++ show ds') ds' of
               [] -> err "No matching declarations found - explicit import"
               [t] -> return [t]
           Nothing -> err $ "Object " ++ intercalate "." objs ++ " does not exist."
@@ -193,7 +198,10 @@ tcScDecl (ScType _ ty) s = do
             ds' <- trace ("We try to query for TYPE:" ++ varName) query s reTy pShortest (matchDecl varName) <&> map projTy
             case ds' of
               [] -> err "No matching declarations found - explicit import"
-              [t] -> return [t]
+              [t] -> do 
+                -- sink s TY $ Decl name t
+                return [t]
+              _  -> err "Ambiguous reference."
       _ -> return [ty]
 
 
@@ -253,13 +261,14 @@ declareVar :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScDecl -
 declareVar (ScVal (ScParam name t) _) s = do
         trace ("Drawing declaration for VAR: " ++ name ++ " with scope: " ++ show s) sink s VAR $ Decl name t
         return s
-declareVar (ScDef name params returnT decls _) s = do
+declareVar (ScDef name params returnT (Body decls _)) s = do
     s' <- new
     edge s' P s
     edge s DEF s'
     trace ("Drawing declaration for VAR: " ++ name ++ " with scope: " ++ show s) sink s VAR $ Decl name returnT
     mapM_ (\(ScParam str ty) -> sink s' VAR $ Decl str ty) (concat params)
     mapM_ (`declareVar` s') decls
+    -- mapM_ (`declareVar` sc) innerDecls
     return s'
 declareVar (ScObject name _ defs) s = do
       sObjDef <- new
@@ -272,6 +281,7 @@ declareVar (ScObject name _ defs) s = do
 declareVar (ScType name ty) s = do
     trace ("Drawing declaration for TYPE: " ++ name ++ " with scope: " ++ show s) sink s TY $ Decl name ty
     return s
+
 
 -- Step 4: copy imported names to the importing scopes 
 step4 :: (Functor f, Error String < f, Scope Sc Label Decl < f) => ScProg' -> Free f ()
