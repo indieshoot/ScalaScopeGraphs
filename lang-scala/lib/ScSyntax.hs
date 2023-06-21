@@ -26,6 +26,9 @@ instance Show Type where
 
 
 -- Inspiration: https://www.scala-lang.org/files/archive/spec/2.13/13-syntax-summary.html
+
+-- data LexicalSc = LSc [ScDecl] Sc deriving (Eq, Show)
+
 type ScProg = [ScDecl]
 type ScProg' = [(ScDecl, Sc)]
 
@@ -34,7 +37,8 @@ data ScDecl
   = ScVal ScParam ScExp 
   | ScType String Type
   | ScDef String [[ScParam]] RetTy DefBody -- we address the multi-clause/multi-params 
-  | ScObject String [Imp] [ScDecl] 
+  | ScObject String [ScDecl] 
+  | ScImp Imp
   deriving (Eq, Show)
 
 data ScParam = ScParam String Type deriving (Eq, Show)
@@ -45,10 +49,9 @@ type VarName = String
 
 data DefBody = Body [ScDecl] ScExp  deriving (Eq, Show)
 
-data LexicalSc = LSc [ScDecl] Sc deriving (Eq, Show)
 
 data Imp 
-  = ScEImp [ObjName] VarName
+  = ScEImp [ObjName] [VarName]
   | ScWImp [ObjName]
   deriving (Eq, Show)
 
@@ -58,7 +61,7 @@ data ScExp
   | ScBool Bool 
   | ScBinOp ScExp ScOp ScExp
   | ScIf ScExp ScExp ScExp   
-  | ScApp ScExp [ScExp]   
+  | ScApp ScExp [[ScExp]]   
   | ScQRef [ObjName] VarName  -- qualified references
   | ScUnit -- to declare void methods
   deriving (Eq, Show)
