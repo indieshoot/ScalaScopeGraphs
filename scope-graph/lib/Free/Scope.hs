@@ -54,6 +54,7 @@ data Scope s l d k
   | Edge s l s k
   | Sink s l d k
   | Query s (RE l) (PathOrder l d) (d -> Bool) ([d] -> k)
+  | PathQuery s (RE l) (PathOrder l d) (d -> Bool) ([ResolvedPath l d] -> k)
   deriving Functor
 
 new :: forall s l d f.
@@ -75,6 +76,11 @@ query :: forall s l d f.
         Scope s l d < f
      => s -> RE l -> PathOrder l d -> (d -> Bool) -> Free f [d]
 query s re po ad = Do $ inj $ Query s re po ad Pure
+
+queryWithPath :: forall s l d f.
+        Scope s l d < f
+     => s -> RE l -> PathOrder l d -> (d -> Bool) -> Free f [ResolvedPath l d]
+queryWithPath s re po ad = Do $ inj $ PathQuery s re po ad Pure
 
 
 ---------------
@@ -227,6 +233,9 @@ hScope = Handler_
           Right g' -> k g'
       Query sc re po ad k ->
         let (g', rs) = execQuery g sc re po ad
-        in k (map dataOfPath rs) g')
+        in k (map dataOfPath rs) g'
+      PathQuery sc re po ad k ->
+        let (g', rs) = execQuery g sc re po ad
+        in k rs g')
 
 

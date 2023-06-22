@@ -2,12 +2,10 @@ module Statix.Imports where
 
 import Test.HUnit
 
-import Data.Either (isRight)
-import TypeChecker (Label, Decl, runTC, runTCPhased)
+import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-import Debug.Trace (trace)
 
 
 runTCFailI :: ScProg -> IO String
@@ -108,7 +106,7 @@ testDeepExplRef = do
 --     type T = Int;
 --     object O3 {
 --       object O4 {
-  --           val x : T = 42;
+--             val x : T = 42;
 --         object O5 {
 --         };
 --       };

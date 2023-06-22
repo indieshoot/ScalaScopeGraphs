@@ -2,12 +2,11 @@ module Main where
 
 import Test.HUnit
 
-import Data.Either (isRight)
-import TypeChecker (Label, Decl, runTC, runTCPhased)
+import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-import Debug.Trace (trace)
+
 import Statix.Comprehensive
 import Statix.Defs
 import Statix.Expressions
@@ -16,42 +15,9 @@ import Statix.Precedence
 import Statix.References
 import Statix.Statements
 
-runTCFail :: ScProg -> IO String
-runTCFail p = either return (const $ assertFailure "Expected exception, got none") $ runTCPhased p
 
-runTCPh :: ScProg -> IO ([Type], Graph Label Decl) 
-runTCPh = either assertFailure return . runTCPhased
-
-
-testTypeAliaChain :: IO ()
-testTypeAliaChain = do
-  t <- runTCPh [ScObject "A" 
-                    [ 
-                      ScType "X" NumT,
-                      ScType "Y" (TyRef "X")
-                      -- ScType "Z" (TyRef "Y"),
-                      -- ScVal (ScParam "x" (TyRef "Z")) (ScNum 42)
-                    ]
-               ]
-  print $ snd t
-  assertEqual "Incorrect types" [NumT, NumT] $ fst t
-
--- object A {
---   def f(x: Int): Int = 42;
---   val f: Int = 42;
--- };
-
-testPassUnsuported :: IO ()
-testPassUnsuported = do
-  t <- runTCPh [ScObject "A" 
-                    [ 
-                      ScVal (ScParam "f" NumT) (ScNum 42),
-                      ScDef "f" [[ScParam "x" NumT]] NumT (Body [] (ScNum 42))
-                    ]
-               ]
-  print $ snd t
-  assertEqual "Incorrect types" [NumT, NumT] $ fst t
-
+---------------------------------------------- MINI-STATIX TEST SUITE --------------------------------------------------------
+-- The original test suite can be found at: https://github.com/MetaBorgCube/scala.mstx/tree/master/tests
 
 tests :: Test
 tests = TestList
@@ -90,7 +56,6 @@ tests = TestList
     , "testZeroCurryFail" ~: testZeroCurryFail
 
     -- imports
-
     , "testNestedWildcard" ~: testDeepWildRef
     , "testDeepReference" ~: testDeepExplRef
     , "testDeepReferenceFail" ~: testDeepExplRefFail
@@ -116,7 +81,7 @@ tests = TestList
     , "testMultipleParamClauses" ~: testBlockShadow
     , "testMultipleParamClauses" ~: testBlockShadowFail
     , "testDeepType" ~: testDeepType
-    , "testDeepType" ~: testDeepTypeImp
+    , "testDeepTypeImp" ~: testDeepTypeImp
     , "testInnerParamDouble" ~: testInnerParam
     , "testInnerShadowsSelf" ~: testInnerShadowsSelf
     , "testInnerTypeShadowsOuter" ~: testInnerTypeShadowsOuter

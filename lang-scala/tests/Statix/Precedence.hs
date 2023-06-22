@@ -2,12 +2,10 @@ module Statix.Precedence where
 
 import Test.HUnit
 
-import Data.Either (isRight)
-import TypeChecker (Label (TY), Decl, runTC, runTCPhased)
+import TypeChecker (Label (TY), Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-import Debug.Trace (trace)
 
 
 runTCFailP :: ScProg -> IO String

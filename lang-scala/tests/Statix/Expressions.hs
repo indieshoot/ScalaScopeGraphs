@@ -2,13 +2,10 @@ module Statix.Expressions where
 
 import Test.HUnit
 
-import Data.Either (isRight)
-import TypeChecker (Label, Decl, runTC, runTCPhased)
+import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-import Debug.Trace (trace)
-
 
 runTCFailE :: ScProg -> IO String
 runTCFailE p = either return (const $ assertFailure "Expected exception, got none") $ runTCPhased p

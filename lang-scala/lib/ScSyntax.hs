@@ -72,7 +72,6 @@ data ScOp
   | ScMult
   | ScDiv
   | ScEquals
-  | ScLessThan
   deriving (Eq, Show)
 
 

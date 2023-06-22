@@ -2,12 +2,10 @@ module Statix.Statements where
 
 import Test.HUnit
 
-import Data.Either (isRight)
-import TypeChecker (Label, Decl, runTC, runTCPhased)
+import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-import Debug.Trace (trace)
 
 
 runTCFailS :: ScProg -> IO String
@@ -190,3 +188,17 @@ testMExprStatement = do
                 ] 
   print $ snd t
   assertEqual "Incorrect types" [BoolT] $ fst t 
+
+
+testTypeAliaChain :: IO ()
+testTypeAliaChain = do
+  t <- runTCPhS [ScObject "A" 
+                    [ 
+                      ScType "X" NumT,
+                      ScType "Y" (TyRef "X")
+                      -- ScType "Z" (TyRef "Y"),
+                      -- ScVal (ScParam "x" (TyRef "Z")) (ScNum 42)
+                    ]
+               ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT] $ fst t
