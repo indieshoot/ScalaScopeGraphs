@@ -257,4 +257,10 @@ test-suite scala-test
                         scala-lib
     hs-source-dirs:     lang-scala/tests
     default-language:   Haskell2010
-    other-modules:    
+    other-modules:      Statix.Comprehensive
+                        Statix.Defs
+                        Statix.Expressions
+                        Statix.Imports
+                        Statix.Precedence
+                        Statix.References
+                        Statix.Statements
