@@ -1,7 +1,6 @@
 module Main where
-import TypeChecker (runTC)
-import ScSyntax (example)
+import TypeChecker (runTCPhased)
 
 main :: IO ()
 main = do
-    print $ runTC example
+    print $ runTCPhased []

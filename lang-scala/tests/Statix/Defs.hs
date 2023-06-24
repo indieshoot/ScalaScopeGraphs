@@ -1,18 +1,17 @@
 module Statix.Defs where
 
-import Test.HUnit
-
+import Test.HUnit ( assertEqual, assertFailure )
 import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-
 
 runTCFailD :: ScProg -> IO String
 runTCFailD p = either return (const $ assertFailure "Expected exception, got none") $ runTCPhased p
 
 runTCPhD :: ScProg -> IO ([Type], Graph Label Decl) 
 runTCPhD = either assertFailure return . runTCPhased
+
 
 -- object A {
 --   def A: Int = A;
@@ -134,7 +133,7 @@ testMultipleParamClausesFail = do
                             (ScId "m") )
                     ]
                  ]
-  assertEqual "Incorrect types" "Type missmatch in def with expected: bool vs. got: num" t 
+  assertEqual "Incorrect types" "Type mismatch in def with expected: bool vs. got: num" t 
 
 -- object A {
 --   def f: Int = g;
@@ -274,7 +273,7 @@ testTypeNoFound = do
                         ]
                     ] 
                ]
-  assertEqual "Incorrect types" "No matching declarations found - type reference" t 
+  assertEqual "Incorrect types" "No matching declarations found for variable \"I\"" t 
 
 -- object O {
 --   type I = Int;

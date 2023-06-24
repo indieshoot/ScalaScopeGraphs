@@ -1,7 +1,6 @@
 module Statix.Expressions where
 
-import Test.HUnit
-
+import Test.HUnit ( assertEqual, assertFailure )
 import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
@@ -12,6 +11,7 @@ runTCFailE p = either return (const $ assertFailure "Expected exception, got non
 
 runTCPhE :: ScProg -> IO ([Type], Graph Label Decl) 
 runTCPhE = either assertFailure return . runTCPhased
+
 
 -- object O {
 --   def f(g : Int => Boolean): Int => Boolean = g;
@@ -127,7 +127,7 @@ testSingleCurryFail = do
                             (ScApp (ScId "f") [[ScNum 42]]) )
                     ]
                  ]
-  assertEqual "Incorrect types" "Type missmatch in def with expected: bool vs. got: num" t 
+  assertEqual "Incorrect types" "Type mismatch in def with expected: bool vs. got: num" t 
 
 -- object O {
 --   def f: Int = x;
@@ -144,4 +144,4 @@ testZeroCurryFail = do
                             (ScApp (ScId "f") []) )
                     ]
                  ]
-  assertEqual "Incorrect types" "No matching declarations found - expression" t 
+  assertEqual "Incorrect types" "No matching declarations found for the expression \"x\"" t 

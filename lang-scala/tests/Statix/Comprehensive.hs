@@ -1,7 +1,6 @@
 module Statix.Comprehensive where
   
-import Test.HUnit
-
+import Test.HUnit ( assertEqual, assertFailure )
 import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
@@ -13,6 +12,7 @@ runTCFailC p = either return (const $ assertFailure "Expected exception, got non
 
 runTCPhC :: ScProg -> IO ([Type], Graph Label Decl) 
 runTCPhC = either assertFailure return . runTCPhased
+
 
 -- object a {
 --   object b {
@@ -62,37 +62,23 @@ testPaperExample = do
 -- };
 
 
--- testPaperExFail :: IO ()
--- testPaperExFail = do
---   t <- runTCPh [ScObject "A" 
---                     [ 
---                       ScObject "B" 
---                       [   
---                         ScDef "f" [] Unit (Body [] ScUnit)
---                       ]
---                     ],
---                 ScObject "C"  
---                     [
---                         ScImp (ScWImp ["A"]), 
---                         ScDef "g" [] Unit (Body [] (ScApp (ScId "f") [])),
---                         ScImp (ScEImp ["A", "B"] ["f"])
---                     ]
---                ]
---   print $ snd t
---   assertEqual "Incorrect types" [] $ fst t
-
 testPaperExFail :: IO ()
 testPaperExFail = do
   t <- runTCPhC [ScObject "A" 
                     [ 
-                        ScVal (ScParam "x" NumT) (ScNum 3)
+                      ScObject "B" 
+                      [   
+                        ScDef "f" [] Unit (Body [] ScUnit)
+                      ]
                     ],
-                ScObject "B"  
+                ScObject "C"  
                     [
-                        ScVal (ScParam "y" NumT) (ScId "x"),
-                        ScImp (ScEImp ["A"] ["x"]),
-                        ScVal (ScParam "z" NumT) (ScNum 3)
+                        ScImp (ScWImp ["A"]), 
+                        ScDef "g" [] Unit (Body [] (ScApp (ScId "f") [])),
+                        ScImp (ScEImp ["A", "B"] ["f"])
                     ]
                ]
   print $ snd t
   assertEqual "Incorrect types" [] $ fst t
+
+

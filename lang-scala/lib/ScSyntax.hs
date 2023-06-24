@@ -5,78 +5,91 @@
 
 module ScSyntax where
 import Free.Scope (Sc)
-import Data.List
+import Data.List ( intercalate )
 
+-- Inspiration for the subset: https://www.scala-lang.org/files/archive/spec/2.13/13-syntax-summary.html
+
+--------------------
+-- Type Data Type --
+--------------------
 data Type
-  = NumT
-  | BoolT
-  | FunT [Type] Type
-  | QRefT [ObjName] VarName
-  | TyRef String
-  | Unit -- unit type for void methods
+  = NumT                    -- Numeral type
+  | BoolT                   -- Boolean type
+  | FunT  [Type] Type       -- Function type
+  | QRefT [ObjName] VarName -- Qualified type reference (e.g. x : A.B.T = ...)
+  | TyRef String            -- Type reference (e.g. x : T = ...)
+  | Unit                    -- Unit type for void methods
   deriving Eq
 
+-- custom Show instance for Type 
 instance Show Type where
-  show NumT = "num"
-  show BoolT = "bool"
-  show (FunT ti to) = "(" ++ show ti ++ " -> " ++ show to ++ ")"
-  show (QRefT objs varName) = intercalate "." objs ++ "." ++ varName
+  show NumT         = "num"
+  show BoolT        = "bool"
+  show Unit         = "unit"
+  show (FunT fr to) = "(" ++ show fr ++ " -> " ++ show to ++ ")"
+  show (QRefT ob v) = intercalate "." ob ++ "." ++ v
   show (TyRef name) = name
-  show _ = "undefined"
+  show _            = "undefined"
 
+--------------------
+-- Scala Program  --
+--------------------
+type ScProg  = [ScDecl]        -- list of declarations
+type ScProg' = [(ScDecl, Sc)]  -- zipped list of declarations with the appropriate scope
 
--- Inspiration: https://www.scala-lang.org/files/archive/spec/2.13/13-syntax-summary.html
-
--- data LexicalSc = LSc [ScDecl] Sc deriving (Eq, Show)
-
-type ScProg = [ScDecl]
-type ScProg' = [(ScDecl, Sc)]
-
--- ScDecl is an algebraic data type that can take on one of the forms:
+----------------------------
+-- Declaration Data Type  --
+----------------------------
 data ScDecl
-  = ScVal ScParam ScExp 
-  | ScType String Type
-  | ScDef String [[ScParam]] RetTy DefBody -- we address the multi-clause/multi-params 
-  | ScObject String [ScDecl] 
-  | ScImp Imp
+  = ScObject String [ScDecl]               -- Scala object 
+  | ScImp Imp                              -- Scala import
+  | ScVal ScParam ScExp                    -- Scala val
+  | ScType String Type                     -- Scala type alias
+  | ScDef String [[ScParam]] RetTy DefBody -- Scala def
   deriving (Eq, Show)
 
-data ScParam = ScParam String Type deriving (Eq, Show)
+-- Type aliases for better readability
+type RetTy   = Type    -- return type
+type ObjName = String  -- object name
+type VarName = String  -- variable name
 
-type RetTy = Type
-type ObjName = String
-type VarName = String
+data ScParam = ScParam String Type deriving (Eq, Show)  -- Scala parameter (e.g. x : Int)
+data DefBody = Body [ScDecl] ScExp  deriving (Eq, Show) -- Def body data type
 
-data DefBody = Body [ScDecl] ScExp  deriving (Eq, Show)
-
-
+------------------------------------
+-- Explicit and Wildcard Imports  --
+------------------------------------
 data Imp 
-  = ScEImp [ObjName] [VarName]
-  | ScWImp [ObjName]
+  = ScEImp [ObjName] [VarName]  -- Scala explicit imports (e.g. import A.x)
+  | ScWImp [ObjName]            -- Scala wildcard imports (e.g. import A._)
   deriving (Eq, Show)
 
+
+--------------------------
+-- Expression Data Type --
+--------------------------
 data ScExp 
-  = ScId String
-  | ScNum Int
-  | ScBool Bool 
-  | ScBinOp ScExp ScOp ScExp
-  | ScIf ScExp ScExp ScExp   
-  | ScApp ScExp [[ScExp]]   
+  = ScId String               -- identifiers 
+  | ScNum Int                 -- numerals
+  | ScBool Bool               -- booleans
+  | ScBinOp ScExp ScOp ScExp  -- binary operators
+  | ScIf ScExp ScExp ScExp    -- if else blocks
+  | ScApp ScExp [[ScExp]]     -- function application
   | ScQRef [ObjName] VarName  -- qualified references
-  | ScUnit -- to declare void methods
+  | ScUnit                    -- void return
   deriving (Eq, Show)
 
+----------------------------
+-- Scala Subset Operators --
+----------------------------
 data ScOp
-  = ScAdd
-  | ScMinus
-  | ScMult
-  | ScDiv
-  | ScEquals
+  = ScAdd    -- (+)
+  | ScMinus  -- (-)
+  | ScMult   -- (*)
+  | ScDiv    -- (/)
+  | ScEquals -- (==)
   deriving (Eq, Show)
 
-
-example :: ScExp
-example = ScNum 1
  
 
 

@@ -1,18 +1,17 @@
 module Statix.Precedence where
 
-import Test.HUnit
-
+import Test.HUnit ( assertEqual, assertFailure )
 import TypeChecker (Label (TY), Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-
 
 runTCFailP :: ScProg -> IO String
 runTCFailP p = either return (const $ assertFailure "Expected exception, got none") $ runTCPhased p
 
 runTCPhP :: ScProg -> IO ([Type], Graph Label Decl) 
 runTCPhP = either assertFailure return . runTCPhased
+
 
 -- object O {
 --   val x: Int = 42;
@@ -31,7 +30,7 @@ testBlockShadowFail = do
                       (Body [ScVal (ScParam "x" BoolT) (ScBool True)]  (ScId "x") )
                     ]
                  ]
-  assertEqual "Incorrect types" "Type missmatch in def with expected: num vs. got: bool" t 
+  assertEqual "Incorrect types" "Type mismatch in def with expected: num vs. got: bool" t 
 
 -- object O {
 --   val x: Int = 42;
@@ -365,7 +364,7 @@ testParamShadowsOuterFail = do
                       (Body []  (ScId "x") )
                     ]
                  ]
-  assertEqual "Incorrect types" "Type missmatch in def with expected: num vs. got: bool" t
+  assertEqual "Incorrect types" "Type mismatch in def with expected: num vs. got: bool" t
 
 -- object O {
 --   val x : Int = 42;
@@ -620,7 +619,7 @@ testWNoShadow = do
                     ]
                     ]
                ]
-  assertEqual "Incorrect types" "No matching declarations found - type reference" t
+  assertEqual "Incorrect types" "No matching declarations found for variable \"A\"" t
 
 -- object O {
 --   object M {
@@ -686,7 +685,7 @@ testWNoShadowOuter = do
                     ]
                     ]
                ]
-  assertEqual "Incorrect types" "No matching declarations found - type reference"  t
+  assertEqual "Incorrect types" "No matching declarations found for variable \"A\""  t
 
 -- object O {
 --   object N {
@@ -744,4 +743,4 @@ testWShadowW = do
                     ]
                     ]
                ]
-  assertEqual "Incorrect types" "No matching declarations found - type reference"  t
+  assertEqual "Incorrect types" "No matching declarations found for variable \"A\""  t

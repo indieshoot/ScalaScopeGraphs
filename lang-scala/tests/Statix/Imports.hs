@@ -1,18 +1,17 @@
 module Statix.Imports where
 
-import Test.HUnit
-
+import Test.HUnit ( assertEqual, assertFailure )
 import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-
 
 runTCFailI :: ScProg -> IO String
 runTCFailI p = either return (const $ assertFailure "Expected exception, got none") $ runTCPhased p
 
 runTCPhI :: ScProg -> IO ([Type], Graph Label Decl) 
 runTCPhI = either assertFailure return . runTCPhased
+
 
 -- object O1 {
 --   type T = Boolean;
@@ -50,7 +49,7 @@ testDeepExplRefFail = do
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                  ]
-  assertEqual "Incorrect types" "No matching declarations found - explicit import" t 
+  assertEqual "Incorrect types" "No matching declarations found for [\"x\"]" t 
 
 
 -- object O1 {
@@ -137,7 +136,7 @@ testDeepWildRefFail = do
                       ScVal (ScParam "y" NumT) (ScId "x")
                     ] 
                 ]     
-  assertEqual "Incorrect types" "No matching declarations found - expression" t 
+  assertEqual "Incorrect types" "No matching declarations found for [\"x\"]" t 
 
 -- object O1 {
 --   type T = Boolean;
@@ -333,7 +332,7 @@ testMultipleImportsFail = do
                     ScVal (ScParam "x" (TyRef "R")) (ScNum 42)
                     ]
                ]
-  assertEqual "Incorrect types" "No matching declarations found - type reference" t
+  assertEqual "Incorrect types" "No matching declarations found for variable \"R\"" t
 
 
 testMultipleImports :: IO ()
@@ -418,7 +417,7 @@ testWImpInvisible = do
                         ScVal (ScParam "y" NumT) (ScId "x")
                     ]
                ]
-  assertEqual "Incorrect types" "No matching declarations found - expression"  t
+  assertEqual "Incorrect types" "No matching declarations found for the expression \"x\"" t
 
   -- object A {
   --   val x : Int = 21
@@ -482,7 +481,7 @@ testWImpNotTransitive = do
                         ScVal (ScParam "x" (TyRef "T")) (ScNum 42)
                     ] 
                  ]
-  assertEqual "Incorrect types" "No matching declarations found - type reference" t
+  assertEqual "Incorrect types" "No matching declarations found for variable \"T\"" t
 
 testEImpNotTransitive :: IO ()
 testEImpNotTransitive = do
@@ -500,7 +499,7 @@ testEImpNotTransitive = do
                         ScVal (ScParam "x" (TyRef "T")) (ScNum 42)
                     ] 
                  ]
-  assertEqual "Incorrect types" "No matching declarations found - explicit import" t
+  assertEqual "Incorrect types" "No matching declarations found for [\"T\"]" t
 
 -- object A {
 --   import B._;
@@ -527,16 +526,16 @@ testWImpForward = do
   assertEqual "Incorrect types" [NumT, NumT] $ fst t 
 
 
--- -- object A {
--- --   object B {
--- --     val x : Int = 42;
--- --   };
--- -- };
+-- object A {
+--   object B {
+--     val x : Int = 42;
+--   };
+-- };
 
--- -- object O {
--- --   import A.B.x;
--- --   val y : Int = x;
--- -- };
+-- object O {
+--   import A.B.x;
+--   val y : Int = x;
+-- };
 
 
 testMExplImp :: IO ()

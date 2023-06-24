@@ -1,18 +1,17 @@
 module Statix.References where
 
-import Test.HUnit
-
+import Test.HUnit ( assertEqual, assertFailure )
 import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-
 
 runTCFailR :: ScProg -> IO String
 runTCFailR p = either return (const $ assertFailure "Expected exception, got none") $ runTCPhased p
 
 runTCPhR :: ScProg -> IO ([Type], Graph Label Decl) 
 runTCPhR = either assertFailure return . runTCPhased
+
 
 -- object A {
 --   object C {
@@ -77,7 +76,7 @@ testPathNoTransitive = do
                        ScType "Y" (QRefT ["A", "B"] "Y")
                     ] 
                  ]
-  assertEqual "Incorrect types" "No matching declarations found - qualified reference"  t 
+  assertEqual "Incorrect types" "No matching declarations found for variable \"Y\""  t 
 
 -- object A {
 --   object B {
@@ -173,4 +172,4 @@ testUnbound = do
                         ScDef "f" [] NumT (Body [] (ScId "g"))
                     ] 
                  ]
-  assertEqual "Incorrect types" "No matching declarations found - expression" t 
+  assertEqual "Incorrect types" "No matching declarations found for the expression \"g\"" t 

@@ -1,18 +1,17 @@
 module Statix.Statements where
 
-import Test.HUnit
-
+import Test.HUnit ( assertEqual, assertFailure )
 import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
 import ScSyntax
-
 
 runTCFailS :: ScProg -> IO String
 runTCFailS p = either return (const $ assertFailure "Expected exception, got none") $ runTCPhased p
 
 runTCPhS :: ScProg -> IO ([Type], Graph Label Decl) 
 runTCPhS = either assertFailure return . runTCPhased
+
 
 -- object O {
 --   type I = Int;
@@ -34,10 +33,6 @@ testNestedObjTy  = do
                ]
   print $ snd t
   assertEqual "Incorrect types" [NumT, NumT] $ fst t 
-
-
-
-
 
 -- object O {
 --   def f: Int = {
@@ -110,7 +105,7 @@ testBodyOuterAccessImpFail = do
                             (ScId "x"))
                     ]
                  ]
-  assertEqual "Incorrect types"  "Type missmatch in def with expected: num vs. got: bool" t
+  assertEqual "Incorrect types"  "Type mismatch in def with expected: num vs. got: bool" t
 
 -- object O {
 --   def f: Int = {
@@ -163,7 +158,7 @@ testExprStatementFail = do
                             (ScBool True) )
                  ]
                 ] 
-  assertEqual "Incorrect types" "Type missmatch in def with expected: num vs. got: bool" t 
+  assertEqual "Incorrect types" "Type mismatch in def with expected: num vs. got: bool" t 
 
 -- object O {
 --   def f: Boolean = {

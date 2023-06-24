@@ -1,7 +1,8 @@
 module Main where
 
 import Test.HUnit
-
+    ( (~:), runTestTT, Counts(failures, errors), Test(TestList) )
+    
 import TypeChecker (Label, Decl, runTCPhased)
 import qualified System.Exit as Exit
 import Free.Scope (Graph)
@@ -16,47 +17,47 @@ import Statix.References
 import Statix.Statements
 
 
----------------------------------------------- MINI-STATIX TEST SUITE --------------------------------------------------------
+----------------------------
+-- Mini-Statix Test Suite --
+----------------------------
+
 -- The original test suite can be found at: https://github.com/MetaBorgCube/scala.mstx/tree/master/tests
 
 tests :: Test
 tests = TestList
     [  
-    -- , "testTypeAliasChain" ~: testTypeAliaChain
-    -- "testPaperFail" ~: testPaperExFail
-
-    -- comprehensive
+    -- Comprehensive
      "testPaperEx" ~: testPaperExample
 
-    -- defs
+    -- Defs
     , "testTypeAndValOverlapImp" ~: testTypeAndValOverlapImp
     , "testTypeNotFound" ~: testTypeNoFound
     , "testTypeFound" ~: testTypeFound
     , "testMutualDefs" ~: testMutualDefs
-    ,  "testRecursiveDefs" ~: testRecDefs
+    , "testRecursiveDefs" ~: testRecDefs
     , "testNestedObjects" ~: testNestedObj
     , "testAllSameName" ~: testSameNameDef
     , "testDuplicateDefinition" ~: testDuplicateVal
     , "testDuplicateType" ~: testDuplicateType
     , "testForwardReference"  ~: testForwardRef
-    ,  "testMultipleParams" ~: testMultipleParamClauses
-    ,  "testMultipleParamsMultipleParams" ~: testMultipleParamClausesMultipleParams
-    ,  "testMultipleParamsNo" ~: testMultipleParamClausesFail
+    , "testMultipleParams" ~: testMultipleParamClauses
+    , "testMultipleParams" ~: testMultipleParamClausesMultipleParams
+    , "testMultipleParamsFail" ~: testMultipleParamClausesFail
     , "testTypeAndValOverlap" ~: testTypeAndValOverlap
     , "testTypeDeclaration" ~: testTypeDecl
 
-    -- expressions
+    -- Expressions
     , "testCurry" ~: testCurry
     , "testSingleCurry" ~: testSingleCurry
-    , "testSingleCurryNo" ~: testSingleCurryFail
+    , "testSingleCurryFail" ~: testSingleCurryFail
     , "testFunctionType" ~: testFunctionValRef
     , "testFunctionCall" ~: testFunctionCall
     , "testFunctionCallFail" ~: testFunctionCallNo
     , "testFunctionCallRef" ~: testFunctionRef
     , "testZeroCurryFail" ~: testZeroCurryFail
 
-    -- imports
-    , "testNestedWildcard" ~: testDeepWildRef
+    -- Imports
+    , "testNestedWildcardImp" ~: testDeepWildRef
     , "testDeepReference" ~: testDeepExplRef
     , "testDeepReferenceFail" ~: testDeepExplRefFail
     , "testEImp" ~: testEImp
@@ -75,9 +76,8 @@ tests = TestList
     , "testMultipleExplicitImp" ~: testMExplImp
     , "testMultipleWildcardImp" ~: testMWImp
     , "testWImpForward" ~: testWImpForward
-    -- , "testNestedWildcardFail" ~: testDeepWildRefFail
 
-    -- precedence
+    -- Precedence
     , "testMultipleParamClauses" ~: testBlockShadow
     , "testMultipleParamClauses" ~: testBlockShadowFail
     , "testDeepType" ~: testDeepType
@@ -104,12 +104,8 @@ tests = TestList
     , "testWNoShadowE" ~: testWNoShadowE
     , "testWNoShadowO" ~: testWNoShadowOuter
     , "testWImpResolves" ~: testWImpResolves
-    -- , "testWImpShadowW" ~: testWShadowW
-    -- , "testInnerShadowsOuter" ~: testInnerBlockShadowsOuter
 
-
-    -- references
-    -- "testPaperFail" ~: testPaperExFail
+    -- References
     , "testPathNoLex" ~: testPathNoLexical
     , "testPathNoTransitive" ~: testPathNoTransitive
     , "testQualifiedReference" ~: testQualifiedRef
@@ -117,14 +113,14 @@ tests = TestList
     , "testQualifiedReferenceType2" ~: testQualifiedRefTy2
     , "testUnbound" ~: testUnbound
     
-    -- statements 
+    -- Statements 
     , "testNestedTy" ~: testNestedObjTy
     , "testBodyOuterAccess" ~: testBodyOuterAccess
     , "testBodyOuterAccess" ~: testBodyOuterAccessImp
     , "testBodyOuterAccess" ~: testBodyOuterAccessImpFail
     , "testExprStatement" ~: testExprStatement
     , "testLaterBlockNoShadow" ~: testBlockNoShadow
-    , "testExprStatementNo" ~: testExprStatementFail
+    , "testExprStatementFail" ~: testExprStatementFail
     , "testMExpr" ~: testMExprStatement
     ]
 
