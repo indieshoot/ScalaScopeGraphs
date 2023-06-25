@@ -56,13 +56,13 @@ sink = S.sink @_ @Label @Decl
 reExplImp :: RE Label
 reExplImp =  Pipe (Atom VAL) (Atom TY)
 
--- Type Resolution: (P*WI?(EI|TY))
+-- Type Resolution: (P*WI?)(EI|TY))
 reTy :: RE Label
 reTy = Dot (Dot (Star $ Atom P) (Pipe Empty $ Atom WI)) $ Pipe (Atom EI) (Atom TY) 
 
--- Variable Resolution: (WI?|P*)DEF*(EI|VAL)
+-- Variable Resolution: P*DEF*WI?(EI|VAL)
 reImpResVar :: RE Label
-reImpResVar = Dot (Dot (Pipe (Pipe Empty $ Atom WI) (Star $ Atom P)) (Star $ Atom DEF)) $ Pipe (Atom EI) (Atom VAL)
+reImpResVar = Dot (Dot (Dot (Star $ Atom P) (Star $ Atom DEF)) (Pipe Empty $ Atom WI)) $ Pipe (Atom EI) (Atom VAL)
 
 -- Path order based on length
 pShortest :: PathOrder Label Decl

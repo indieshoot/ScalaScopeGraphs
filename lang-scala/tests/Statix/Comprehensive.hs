@@ -81,4 +81,30 @@ testPaperExFail = do
   print $ snd t
   assertEqual "Incorrect types" [] $ fst t
 
+  -- object o {
+-- def f:Int = g;
+-- import n._;
+-- def g:Int = h
+-- }
+-- object n {
+-- def h:Int = 42;
+-- }
+
+testPaper :: IO ()
+testPaper = do
+  t <- runTCPhC [ScObject "O" 
+                    [ 
+                      ScDef "f" [] NumT (Body [] (ScId "g")),
+                      ScImp (ScWImp ["N"]),
+                      ScDef "g" [] NumT (Body [] (ScId "h"))
+                    ] , 
+                ScObject "N" 
+                    [ 
+                      ScDef "h" [] NumT (Body [] (ScNum 42))
+                    ] 
+                 ]
+  print $ snd t
+  assertEqual "Incorrect types" [NumT, NumT, NumT] $ fst t 
+
+
 

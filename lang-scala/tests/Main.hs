@@ -28,6 +28,7 @@ tests = TestList
     [  
     -- Comprehensive
      "testPaperEx" ~: testPaperExample
+    , "testPaper2" ~: testPaper
 
     -- Defs
     , "testTypeAndValOverlapImp" ~: testTypeAndValOverlapImp
