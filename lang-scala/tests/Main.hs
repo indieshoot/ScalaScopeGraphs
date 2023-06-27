@@ -23,6 +23,7 @@ import Statix.Statements
 
 -- The original test suite can be found at: https://github.com/MetaBorgCube/scala.mstx/tree/master/tests
 
+-- Test suite comprising of 87 passing tests. 
 tests :: Test
 tests = TestList
     [  
@@ -124,6 +125,42 @@ tests = TestList
     , "testExprStatementFail" ~: testExprStatementFail
     , "testMExpr" ~: testMExprStatement
     ]
+
+
+-- In addition, there are 3 tests that present the right behavior through the structure of our Syntax:
+
+-- 1) test fails since the type takes a type on the rhs
+-- object O {
+--   val x : Int = 42;
+--   type X = x;
+-- };
+
+-- 2) test fails since val takes an expression on the rhs
+-- object O {
+--   type X = Int;
+--   val x : Int = X;
+-- };
+
+-- object O {
+--   type J = Int;
+--   object P {
+--     val x : I = 42;
+--   };
+-- };
+
+
+-- 3) 
+-- object A {
+--   object B {
+--     val x : Int = 42;
+--   };
+-- };
+
+-- object C {
+--   import A.B;
+--   val y : Int = x;
+-- };
+
 
 main :: IO ()
 main = do

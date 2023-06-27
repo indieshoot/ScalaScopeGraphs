@@ -378,19 +378,6 @@ testDoubleImports = do
   print $ snd t
   assertEqual "Incorrect types" [NumT, NumT] $ fst t 
 
--- this fails because of syntax
--- object A {
---   object B {
---     val x : Int = 42;
---   };
--- };
-
--- object C {
---   import A.B;
---   val y : Int = x;
--- };
-
-
 -- object A {
 --   object B {
 --     val x : Int = 42;

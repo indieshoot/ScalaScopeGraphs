@@ -87,7 +87,8 @@ testPaperExFail = do
 -- def g:Int = h
 -- }
 -- object n {
--- def h:Int = 42;
+-- import o.f
+-- def h:Int = f;
 -- }
 
 testPaper :: IO ()
@@ -100,7 +101,8 @@ testPaper = do
                     ] , 
                 ScObject "N" 
                     [ 
-                      ScDef "h" [] NumT (Body [] (ScNum 42))
+                      ScImp (ScEImp ["O"] ["f"]),
+                      ScDef "h" [] NumT (Body [] (ScId "f"))
                     ] 
                  ]
   print $ snd t

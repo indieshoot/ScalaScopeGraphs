@@ -133,7 +133,6 @@ testQualifiedRefTy2 = do
   print $ snd t
   assertEqual "Incorrect types" [NumT, NumT] $ fst t 
 
--- qualified reference to value: make pass
 -- object A {
 --   object B {
 --     val x : Int = 42;

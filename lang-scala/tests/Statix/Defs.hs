@@ -242,25 +242,7 @@ testTypeDecl = do
                  ]
   print $ snd t
   assertEqual "Incorrect types" [NumT] $ fst t 
-
--- test fails since the type takes a type on the rhs
--- object O {
---   val x : Int = 42;
---   type X = x;
--- };
-
--- test fails since val takes an expression on the rhs
--- object O {
---   type X = Int;
---   val x : Int = X;
--- };
-
--- object O {
---   type J = Int;
---   object P {
---     val x : I = 42;
---   };
--- };
+  
 
 testTypeNoFound :: IO ()
 testTypeNoFound = do
