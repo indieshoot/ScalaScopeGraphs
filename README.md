@@ -1,6 +1,6 @@
 # Scope Graph-Based Type Checker for a Scala Subset
 
-This project is part of the `Research Project 2023` of `TU Delft`.
+This project is part of the [Research Project 2023](https://github.com/TU-Delft-CSE/Research-Project) of `TU Delft`.
 
 Our project handles object binding with various imports of Scala, with the following features included:
 
